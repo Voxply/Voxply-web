@@ -1,11 +1,11 @@
 # Voxply-web
 
-Browser client for the [Voxply](https://github.com/YOUR_ORG/Voxply) platform.
+Browser client for the [Voxply](https://github.com/Voxply/Voxply) platform.
 A lightweight web app that speaks the same hub API as the desktop client —
 no native dependencies, runs entirely in the browser.
 
 Part of the Voxply project — see the
-[docs repo](https://github.com/YOUR_ORG/Voxply) for architecture,
+[docs repo](https://github.com/Voxply/Voxply) for architecture,
 API spec, and roadmap.
 
 ## Technologies
