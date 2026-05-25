@@ -8,14 +8,20 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: web
+      - uses: actions/checkout@v4
+        with:
+          repository: Voxply/Voxply-desktop
+          path: desktop
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: web/web/package-lock.json
       - name: Install deps
-        working-directory: web
+        working-directory: web/web
         run: npm ci
       - name: TypeScript check
-        working-directory: web
+        working-directory: web/web
         run: npx tsc --noEmit
