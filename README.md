@@ -15,18 +15,6 @@ API spec, and roadmap.
 - **Web Crypto API** — Ed25519 keypair generation and signing (no native deps)
 - **BIP39** (TypeScript) — 24-word recovery phrase
 
-## Repository structure
-
-```
-voxply-web/
-  src/
-    identity/     Ed25519, BIP39, and key storage (Web Crypto API)
-    platform/     HTTP client, WebSocket, session management, storage
-      commands/   Hub API command wrappers (hubs, messages, DMs)
-    App.tsx
-    styles.css
-```
-
 ## Quick start
 
 ```bash
