@@ -18,7 +18,7 @@ and the [roadmap](https://github.com/Voxply/Voxply/blob/main/ROADMAP.md) for wha
 ## Quick start
 
 ```bash
-cd voxply-web
+cd web
 npm install
 npm run dev
 # Open http://localhost:5173
@@ -27,7 +27,7 @@ npm run dev
 ## Building
 
 ```bash
-cd voxply-web
+cd web
 npm run build
 # Output: dist/
 ```
@@ -35,7 +35,7 @@ npm run build
 ## Type checking
 
 ```bash
-cd voxply-web
+cd web
 npx tsc --noEmit
 ```
 
