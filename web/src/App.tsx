@@ -642,8 +642,8 @@ export default function App() {
   );
 
   const channelTree = useMemo<TreeNode[]>(
-    () => buildChannelTree(channels, activeHubId ? (pinnedChannels[activeHubId] ?? {}) : {}),
-    [channels, activeHubId, pinnedChannels],
+    () => buildChannelTree(channels),
+    [channels],
   );
 
   // === Render ===
@@ -674,7 +674,7 @@ export default function App() {
       <HubSidebar
         hubs={hubs}
         activeHubId={activeHubId}
-        view={view}
+        view={view as "channels" | "dms"}
         showDiscover={false}
         unreadDms={unreadDms}
         unreadByHub={unreadByHub}
@@ -690,12 +690,11 @@ export default function App() {
       />
 
       <ChannelSidebar
-        view={view}
+        view={view as "channels" | "dms"}
         activeHubId={activeHubId}
         hubs={hubs}
         channels={channels}
         selectedChannel={selectedChannel}
-        pinnedChannels={pinnedChannels}
         unreadByChannel={unreadByChannel}
         collapsedCategories={collapsedCategories}
         voicePartByChannel={voicePartByChannel}
@@ -714,9 +713,6 @@ export default function App() {
         conversations={conversations}
         selectedConversation={selectedConversation}
         unreadDms={unreadDms}
-        installedGames={installedGames}
-        selectedGame={selectedGame}
-        canManageGames={canManageGames}
         channelTree={channelTree}
         effectiveNotifyMode={effectiveNotifyMode}
         onToggleCategoryCollapsed={(hubId, catId) =>
@@ -739,29 +735,25 @@ export default function App() {
         onChannelContextMenu={() => {}}
         onVoiceJoin={() => showVoiceNotAvailable()}
         onVoiceLeave={() => {}}
-        onLaunchGame={(g) => { setSelectedGame(g); setView("game"); }}
-        onOpenEditGame={() => {}}
         onSelectAllianceChannel={() => {}}
         onSelectConversation={handleSelectConversation}
         onOpenFriends={() => {}}
         onToggleSelfMute={() => {}}
         onToggleSelfDeafen={() => {}}
         onOpenSettings={() => {}}
-        onSetShowInstallGame={() => {}}
         onDragEnd={() => {}}
         sharing={false}
         onScreenShare={() => {}}
       />
 
       <ContentArea
-        view={view}
+        view={view as "channels" | "dms"}
         activeHubId={activeHubId}
         hubs={hubs}
         theme={theme}
         selectedChannel={selectedChannel}
         selectedConversation={selectedConversation}
         selectedAllianceChannel={null}
-        selectedGame={selectedGame}
         messages={messages}
         searchResults={searchResults}
         searchOpen={searchOpen}
@@ -792,7 +784,6 @@ export default function App() {
         messagesContainerRef={messagesContainerRef}
         messageInputRef={messageInputRef}
         onReconnect={() => {}}
-        onCloseGame={() => setSelectedGame(null)}
         onToggleReaction={handleToggleReaction}
         onSetReplyTarget={setReplyTarget}
         onSaveEdit={handleSaveEdit}

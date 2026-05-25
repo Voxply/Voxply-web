@@ -10,10 +10,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: web
-      - uses: actions/checkout@v4
-        with:
-          repository: Voxply/Voxply-desktop
-          path: desktop
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
