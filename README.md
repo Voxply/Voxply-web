@@ -5,8 +5,8 @@ A lightweight web app that speaks the same hub API as the desktop client —
 no native dependencies, runs entirely in the browser.
 
 Part of the Voxply project — see the
-[docs repo](https://github.com/Voxply/Voxply) for architecture,
-API spec, and roadmap.
+[docs repo](https://github.com/Voxply/Voxply) for architecture and API spec,
+and the [roadmap](https://github.com/Voxply/Voxply/blob/main/ROADMAP.md) for what's next.
 
 ## Technologies
 
