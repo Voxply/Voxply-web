@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "types": ["vite/client"],
+    "paths": {
+      "@components/*": ["../voxply-desktop/src/components/*"],
+      "@shared/types": ["../voxply-desktop/src/types"],
+      "@shared/utils/*": ["../voxply-desktop/src/utils/*"],
+      "@shared/hooks/*": ["../voxply-desktop/src/hooks/*"],
+      "@shared/constants": ["../voxply-desktop/src/constants"],
+      "@platform": ["./src/platform/index"],
+      "@identity/*": ["./src/identity/*"]
+    }
+  },
+  "include": ["src", "../voxply-desktop/src/components", "../voxply-desktop/src/utils", "../voxply-desktop/src/hooks"]
+}

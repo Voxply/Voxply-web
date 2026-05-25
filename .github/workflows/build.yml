@@ -1,0 +1,21 @@
+name: Build check
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: voxply-web/package-lock.json
+      - name: Install deps
+        working-directory: voxply-web
+        run: npm ci
+      - name: TypeScript check
+        working-directory: voxply-web
+        run: npx tsc --noEmit
