@@ -23,7 +23,7 @@ export function UserListGrouped({
       )
     : users;
 
-  const bots = matched.filter((u) => u.is_bot);
+  const bots = matched.filter((u) => u.is_bot && !u.is_webhook);
   const humans = matched.filter((u) => !u.is_bot);
 
   // Online first, then offline. Within each, bucket by group_role (the name of

@@ -56,6 +56,10 @@ export interface Message {
   attachments?: Attachment[];
   reactions?: Reaction[];
   reply_to?: ReplyContext | null;
+  visible_to_pubkey?: string | null;
+  embeds?: Embed[];
+  components?: ComponentRow[];
+  is_bot_sender?: boolean;
 }
 
 export type NotifyMode = "all" | "mentions" | "silent";
@@ -67,6 +71,7 @@ export interface User {
   online: boolean;
   group_role: string | null;
   is_bot?: boolean;
+  is_webhook?: boolean;
 }
 
 export interface BotInfo {
@@ -420,4 +425,53 @@ export interface InstalledGame {
   name: string;
   url: string;
   icon: string | null;
+}
+
+// ---- Bot message types ----
+
+export interface Embed {
+  title?: string;
+  url?: string;
+  description?: string;
+  color?: string;
+  fields?: EmbedField[];
+  thumbnail_url?: string;
+  image_url?: string;
+  footer?: { text: string };
+}
+
+export interface EmbedField {
+  name: string;
+  value: string;
+  inline?: boolean;
+}
+
+export interface ComponentRow {
+  type: "row";
+  components: BotComponent[];
+}
+
+export type BotComponent = BotButton | BotSelect;
+
+export interface BotButton {
+  type: "button";
+  custom_id: string;
+  label: string;
+  style?: "primary" | "secondary" | "danger";
+  disabled?: boolean;
+}
+
+export interface BotSelect {
+  type: "select";
+  custom_id: string;
+  placeholder?: string;
+  min_values?: number;
+  max_values?: number;
+  options: SelectOption[];
+}
+
+export interface SelectOption {
+  label: string;
+  value: string;
+  description?: string;
 }
