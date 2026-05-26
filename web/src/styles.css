@@ -101,8 +101,8 @@
   --text:          #e0e2ed;
   --text-muted:    #9ba1b8;
   --text-faint:    #6b7280;
-  --accent:        #7c3aed;
-  --accent-hover:  #6d28d9;
+  --accent:        #A78BFA;
+  --accent-hover:  #8B6FF4;
   --accent-text:   #ffffff;
   --info:          #60a5fa;
   --info-hover:    #3b82f6;
@@ -111,7 +111,7 @@
   --danger:        #ef4444;
   --danger-hover:  #dc2626;
   --danger-bg:     #4c1f23;
-  --ring:          rgba(124, 58, 237, 0.45);
+  --ring:          rgba(167, 139, 250, 0.45);
   --overlay:       rgba(0, 0, 0, 0.6);
 }
 
@@ -162,8 +162,8 @@
   --text:          #f7f7fa;
   --text-muted:    #8a8c98;
   --text-faint:    #54565f;
-  --accent:        #6571f0;
-  --accent-hover:  #4f5bc4;
+  --accent:        #A78BFA;
+  --accent-hover:  #8B6FF4;
   --accent-text:   #ffffff;
   --info:          #5eb3f0;
   --info-hover:    #3a9ad9;
@@ -172,7 +172,7 @@
   --danger:        #eb5757;
   --danger-hover:  #d64545;
   --danger-bg:     #2a1418;
-  --ring:          rgba(101, 113, 240, 0.45);
+  --ring:          rgba(167, 139, 250, 0.45);
   --overlay:       rgba(0, 0, 0, 0.7);
 }
 
