@@ -1,4 +1,6 @@
+import { useState, useCallback } from "react";
 import type { ComponentRow, BotButton, BotSelect } from "../types";
+import { activeSession } from "../platform/session";
 
 interface Props {
   rows: ComponentRow[];
@@ -8,6 +10,39 @@ interface Props {
 }
 
 export function MessageComponents({ rows, messageId, onInteract }: Props) {
+  const [disabledIds, setDisabledIds] = useState<Set<string>>(new Set());
+
+  const fireInteraction = useCallback(
+    (customId: string, values: string[]) => {
+      setDisabledIds((prev) => new Set(prev).add(customId));
+
+      const timer = setTimeout(() => {
+        setDisabledIds((prev) => {
+          const next = new Set(prev);
+          next.delete(customId);
+          return next;
+        });
+      }, 5000);
+
+      try {
+        const { ws } = activeSession();
+        if (ws) {
+          ws.send({ type: "component_interaction", message_id: messageId, custom_id: customId, values });
+        }
+      } catch {
+        clearTimeout(timer);
+        setDisabledIds((prev) => {
+          const next = new Set(prev);
+          next.delete(customId);
+          return next;
+        });
+      }
+
+      onInteract(messageId, customId, values);
+    },
+    [messageId, onInteract],
+  );
+
   if (!rows.length) return null;
   return (
     <div className="message-components">
@@ -16,12 +51,13 @@ export function MessageComponents({ rows, messageId, onInteract }: Props) {
           {row.components.map((c, ci) => {
             if (c.type === "button") {
               const btn = c as BotButton;
+              const isDisabled = btn.disabled || disabledIds.has(btn.custom_id);
               return (
                 <button
                   key={ci}
                   className={`component-btn component-btn--${btn.style ?? "secondary"}`}
-                  disabled={btn.disabled}
-                  onClick={() => onInteract(messageId, btn.custom_id, [])}
+                  disabled={isDisabled}
+                  onClick={() => fireInteraction(btn.custom_id, [])}
                 >
                   {btn.label}
                 </button>
@@ -29,13 +65,15 @@ export function MessageComponents({ rows, messageId, onInteract }: Props) {
             }
             if (c.type === "select") {
               const sel = c as BotSelect;
+              const isDisabled = disabledIds.has(sel.custom_id);
               return (
                 <select
                   key={ci}
                   className="component-select"
+                  disabled={isDisabled}
                   defaultValue=""
                   onChange={(e) => {
-                    if (e.target.value) onInteract(messageId, sel.custom_id, [e.target.value]);
+                    if (e.target.value) fireInteraction(sel.custom_id, [e.target.value]);
                   }}
                 >
                   <option value="" disabled>{sel.placeholder ?? "Select…"}</option>

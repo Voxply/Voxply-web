@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import type {
   Channel,
   Hub,
@@ -33,6 +33,7 @@ import { MessageContent } from "./MessageContent";
 import { UserListGrouped } from "./UserListGrouped";
 import { MessageEmbeds } from "./MessageEmbeds";
 import { MessageComponents } from "./MessageComponents";
+import { BotCard } from "./BotCard";
 
 interface SelectedAllianceChannel {
   alliance_id: string;
@@ -154,6 +155,13 @@ export function ContentArea({
 }: Props) {
   const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandEntry[]>([]);
   const [slashSelectedIdx, setSlashSelectedIdx] = useState(0);
+  const [botCard, setBotCard] = useState<{ pubkey: string; rect: DOMRect } | null>(null);
+
+  const openBotCard = useCallback((pubkey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setBotCard({ pubkey, rect });
+  }, []);
 
   function handleSlashInputChange(value: string) {
     onInputTextChange(value);
@@ -205,9 +213,8 @@ export function ContentArea({
     onKeyDown(e);
   }
 
-  async function handleComponentInteract(messageId: string, customId: string, values: string[]) {
-    // TODO: wire to WS/HTTP when backend component interaction route is ready
-    console.log("component interaction", messageId, customId, values);
+  function handleComponentInteract(_messageId: string, _customId: string, _values: string[]) {
+    // Actual WS send is handled inside MessageComponents via platform session.
   }
 
   return (
@@ -522,8 +529,17 @@ export function ContentArea({
                             <span className="reply-snippet">{m.reply_to.content_preview}</span>
                           </div>
                         )}
-                        <Avatar src={senderUser?.avatar} name={senderLabel} size={28} />
-                        <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
+                        <span
+                          style={{ cursor: senderUser?.is_bot ? "pointer" : undefined }}
+                          onClick={senderUser?.is_bot && !senderUser?.is_webhook ? (e) => openBotCard(m.sender, e) : undefined}
+                        >
+                          <Avatar src={senderUser?.avatar} name={senderLabel} size={28} />
+                        </span>
+                        <span
+                          className="message-sender"
+                          style={{ color: colorForKey(m.sender), cursor: senderUser?.is_bot ? "pointer" : undefined }}
+                          onClick={senderUser?.is_bot && !senderUser?.is_webhook ? (e) => openBotCard(m.sender, e) : undefined}
+                        >
                           {senderLabel}
                         </span>
                         {senderUser?.is_bot && !senderUser?.is_webhook && (
@@ -781,8 +797,17 @@ export function ContentArea({
               e.preventDefault();
               onSetUserContextMenu({ x: e.clientX, y: e.clientY, user: u });
             }}
+            onBotClick={(pubkey, e) => openBotCard(pubkey, e)}
           />
         </aside>
+      )}
+
+      {botCard && (
+        <BotCard
+          pubkey={botCard.pubkey}
+          anchorRect={botCard.rect}
+          onClose={() => setBotCard(null)}
+        />
       )}
     </>
   );

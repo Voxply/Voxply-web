@@ -6,10 +6,12 @@ export function UserListGrouped({
   users,
   inVoice,
   onContextMenu,
+  onBotClick,
 }: {
   users: User[];
   inVoice?: Set<string>;
   onContextMenu?: (e: React.MouseEvent, user: User) => void;
+  onBotClick?: (pubkey: string, e: React.MouseEvent) => void;
 }) {
   const [filter, setFilter] = useState("");
   const [botsExpanded, setBotsExpanded] = useState(false);
@@ -137,7 +139,13 @@ export function UserListGrouped({
             BOTS — {bots.length}
           </button>
           {botsExpanded && bots.map((bot) => (
-            <div key={bot.public_key} className="member-list-item">
+            <div
+              key={bot.public_key}
+              className="member-list-item"
+              style={{ cursor: onBotClick ? "pointer" : undefined }}
+              onClick={onBotClick ? (e) => onBotClick(bot.public_key, e) : undefined}
+            >
+              <Avatar src={bot.avatar} name={bot.display_name ?? bot.public_key} size={22} />
               <span className="member-name">{bot.display_name ?? "Bot"}</span>
               <span className="bot-badge">BOT</span>
             </div>

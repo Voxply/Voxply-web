@@ -4089,3 +4089,84 @@ a.embed-title:hover {
 
 .component-select:hover { border-color: var(--accent); }
 .component-select:focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* ============================================================
+   BOT CARD POPOVER
+   ============================================================ */
+.bot-card {
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.bot-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bot-card-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.bot-card-name {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md, 1rem);
+}
+
+.bot-card-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.bot-card-section-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin: 0 0 var(--space-1);
+}
+
+.bot-card-commands ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bot-card-command-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.bot-card-command-name {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bot-card-footer {
+  font-size: var(--text-xs);
+  font-style: italic;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}

@@ -475,3 +475,44 @@ export interface SelectOption {
   value: string;
   description?: string;
 }
+
+export interface BotCommandDef {
+  name: string;
+  description: string;
+}
+
+export interface BotProfile {
+  pubkey: string;
+  name: string;
+  avatar_url: string | null;
+  description: string | null;
+  commands: BotCommandDef[];
+}
+
+export interface ExternalBotRow {
+  public_key: string;
+  display_name: string | null;
+  local_note: string | null;
+  approval_status: "pending" | "active" | "removed";
+  last_seen_at: number | null;
+}
+
+export interface ExternalBotInviteResult {
+  bot_invite_token: string;
+  pubkey: string;
+}
+
+export interface WebhookInfo {
+  id: string;
+  display_name: string;
+  channel_id: string;
+  channel_name: string | null;
+  webhook_url: string;
+  created_by: string;
+  created_at: number;
+}
+
+export interface WebhookCreatedResult {
+  id: string;
+  webhook_url: string;
+}
