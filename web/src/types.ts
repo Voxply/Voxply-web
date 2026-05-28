@@ -423,8 +423,9 @@ export interface BotDetailInfo extends BotAdminInfo {
 export interface InstalledGame {
   id: string;
   name: string;
-  url: string;
-  icon: string | null;
+  entry_url: string;
+  description: string | null;
+  thumbnail_url: string | null;
 }
 
 // ---- Bot message types ----

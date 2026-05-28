@@ -777,6 +777,8 @@ export default function App() {
         reconnectingHubs={reconnectingHubs}
         memberSidebarHidden={memberSidebarHidden}
         voiceActiveUsers={voiceActiveUsers}
+        installedGames={installedGames}
+        myAvatar={meInfo?.avatar ?? null}
         inputText={inputText}
         typingByKey={typingByKey}
         dmTypingByKey={dmTypingByKey}
