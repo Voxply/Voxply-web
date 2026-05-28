@@ -43,6 +43,20 @@ export {
 export { sendComponentInteraction } from "./commands/bots";
 
 export {
+  probeFarm,
+  getFarmInfo,
+  getFarmHubQuota,
+  getFarmSettings,
+  patchFarmSettings,
+  getFarmHubsAdmin,
+  suspendFarmHub,
+  deleteFarmHub,
+  getFarmUsers,
+  revokeFarmUserSessions,
+  createHubOnFarm,
+} from "./commands/farms";
+
+export {
   listConversations,
   createConversation,
   getDmMessages,

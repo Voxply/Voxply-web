@@ -27,6 +27,9 @@ import { HubSidebar } from "@components/HubSidebar";
 import { ChannelSidebar } from "@components/ChannelSidebar";
 import { ContentArea } from "@components/ContentArea";
 import { AddHubModal } from "@components/AddHubModal";
+import { FarmSettingsPage } from "@components/FarmSettingsPage";
+import { CreateHubWizard } from "@components/CreateHubWizard";
+import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@shared/utils/channels";
 import type { TreeNode } from "@shared/utils/channels";
 import type { ScreenShareViewerRef } from "@components/ScreenShareViewer";
@@ -43,7 +46,7 @@ import {
   HubApiError,
 } from "@platform";
 import type { WsHandlers } from "@platform";
-import { getActiveHubId } from "@platform";
+import { getActiveHubId, getFarmInfo, rawFetch } from "@platform";
 import {
   getMessages,
   sendMessage,
@@ -235,6 +238,14 @@ export default function App() {
   const [namedProfiles] = useState<NamedProfile[]>([]);
   const [defaultProfileId] = useState<string | null>(null);
 
+  // === Farm admin ===
+  const [showFarmSettings, setShowFarmSettings] = useState(false);
+  const [farmAdminTab, setFarmAdminTab] = useState<FarmAdminTab>("general");
+  const [farmAdminUrl, setFarmAdminUrl] = useState("");
+  const [isFarmAdmin, setIsFarmAdmin] = useState(false);
+  const [showCreateHub, setShowCreateHub] = useState(false);
+  const [knownFarms, setKnownFarms] = useState<{ url: string; name: string }[]>([]);
+
   // === Refs ===
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -371,6 +382,33 @@ export default function App() {
     void restore();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  useEffect(() => {
+    if (!publicKey || hubs.length === 0) return;
+    async function checkFarmAdmin() {
+      const farms: { url: string; name: string }[] = [];
+      for (const hub of hubs) {
+        try {
+          const infoRes = await rawFetch(`${hub.hub_url}/info`);
+          const info = await infoRes.json() as { farm_url?: string | null };
+          if (!info.farm_url) continue;
+          const farmUrl = info.farm_url as string;
+          const farmInfo = await getFarmInfo(farmUrl);
+          if (!farms.some((f) => f.url === farmUrl)) {
+            farms.push({ url: farmUrl, name: farmInfo.name });
+          }
+          if (farmInfo.admin_pubkey && farmInfo.admin_pubkey === publicKey) {
+            setIsFarmAdmin(true);
+            setFarmAdminUrl(farmUrl);
+          }
+        } catch {
+          // Not a farmed hub or farm unreachable — skip.
+        }
+      }
+      setKnownFarms(farms);
+    }
+    void checkFarmAdmin();
+  }, [publicKey, hubs.length]);
 
   // === Helpers ===
 
@@ -671,6 +709,31 @@ export default function App() {
         </div>
       )}
 
+      {showFarmSettings && (
+        <FarmSettingsPage
+          farmUrl={farmAdminUrl}
+          tab={farmAdminTab}
+          onTab={setFarmAdminTab}
+          onClose={() => setShowFarmSettings(false)}
+        />
+      )}
+
+      {showCreateHub && (
+        <CreateHubWizard
+          knownFarms={knownFarms}
+          wsHandlers={stableHandlers}
+          onHubCreated={(hub) => {
+            setHubs((prev) => {
+              if (prev.some((h) => h.hub_id === hub.hub_id)) return prev;
+              return [...prev, hub];
+            });
+            setActiveHubIdState(hub.hub_id);
+            setShowCreateHub(false);
+          }}
+          onClose={() => setShowCreateHub(false)}
+        />
+      )}
+
       <HubSidebar
         hubs={hubs}
         activeHubId={activeHubId}
@@ -681,12 +744,15 @@ export default function App() {
         pingByHub={pingByHub}
         hubNotifyMode={hubNotifyMode}
         hasActiveHub={!!activeHubId}
+        isFarmAdmin={isFarmAdmin}
         onSwitchToDms={() => setView("dms")}
         onSwitchHub={handleSwitchHub}
         onRemoveHub={handleRemoveHub}
         onHubReorder={handleHubReorder}
         onAddHub={() => setShowAddHub(true)}
+        onCreateHub={() => setShowCreateHub(true)}
         onDiscover={() => {}}
+        onFarmSettings={() => { setShowFarmSettings(true); setFarmAdminTab("general"); }}
       />
 
       <ChannelSidebar
