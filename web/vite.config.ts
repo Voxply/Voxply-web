@@ -13,6 +13,7 @@ export default defineConfig({
       "@shared/constants": resolve(__dirname, "../voxply-desktop/src/constants.ts"),
       "@platform": resolve(__dirname, "src/platform/index.ts"),
       "@identity": resolve(__dirname, "src/identity"),
+      "@voxply/i18n": resolve(__dirname, "../i18n/index.ts"),
     },
   },
   server: {

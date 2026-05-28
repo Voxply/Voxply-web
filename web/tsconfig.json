@@ -16,8 +16,10 @@
       "@shared/hooks/*": ["./src/hooks/*"],
       "@shared/constants": ["./src/constants"],
       "@platform": ["./src/platform/index"],
-      "@identity/*": ["./src/identity/*"]
+      "@identity/*": ["./src/identity/*"],
+      "@voxply/i18n": ["../i18n/index.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../i18n"],
+  "exclude": ["../i18n/check-coverage.ts"]
 }
