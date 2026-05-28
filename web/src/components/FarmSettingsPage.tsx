@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { FocusTrap } from "./FocusTrap";
 import {
   getFarmSettings,
@@ -22,7 +23,7 @@ export type FarmAdminTab = "general" | "hubs" | "users";
 interface Props {
   farmUrl: string;
   tab: FarmAdminTab;
-  onTab: (t: FarmAdminTab) => void;
+  onTab: (tab: FarmAdminTab) => void;
   onClose: () => void;
 }
 
@@ -37,32 +38,30 @@ function SuspendDialog({
   onConfirm: (reason: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Suspend hub</h3>
-        <p className="muted">
-          Suspending <strong>{hubName}</strong> blocks all traffic through the
-          farm proxy. The hub process stays running.
-        </p>
-        <label className="settings-label">Reason (optional)</label>
+        <h3>{t("farm.suspend_dialog.title")}</h3>
+        <p className="muted" dangerouslySetInnerHTML={{ __html: t("farm.suspend_dialog.hint", { name: hubName }) }} />
+        <label className="settings-label">{t("farm.suspend_dialog.reason")}</label>
         <input
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason shown to users"
+          placeholder={t("farm.suspend_dialog.reason_placeholder")}
           autoFocus
         />
         <div className="modal-actions">
           <button className="btn-secondary" onClick={onCancel}>
-            Cancel
+            {t("modal.cancel")}
           </button>
           <button
             style={{ background: "var(--danger)", color: "#fff" }}
             onClick={() => onConfirm(reason)}
           >
-            Suspend
+            {t("farm.suspend_dialog.confirm")}
           </button>
         </div>
       </div>
@@ -79,23 +78,21 @@ function DeleteHubDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Delete hub</h3>
-        <p className="muted">
-          Deleting <strong>{hubName}</strong> removes it from the farm directory
-          permanently. The hub database is left intact for the operator.
-        </p>
+        <h3>{t("farm.delete_dialog.title")}</h3>
+        <p className="muted" dangerouslySetInnerHTML={{ __html: t("farm.delete_dialog.hint", { name: hubName }) }} />
         <div className="modal-actions">
           <button className="btn-secondary" onClick={onCancel}>
-            Cancel
+            {t("modal.cancel")}
           </button>
           <button
             style={{ background: "var(--danger)", color: "#fff" }}
             onClick={onConfirm}
           >
-            Delete
+            {t("farm.delete_dialog.confirm")}
           </button>
         </div>
       </div>
@@ -104,6 +101,7 @@ function DeleteHubDialog({
 }
 
 function GeneralTab({ farmUrl }: { farmUrl: string }) {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<FarmSettings>({
     name: "",
     description: "",
@@ -161,19 +159,25 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       const has = prev.tags.includes(tag);
       return {
         ...prev,
-        tags: has ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag],
+        tags: has ? prev.tags.filter((tg) => tg !== tag) : [...prev.tags, tag],
       };
     });
   }
 
-  if (loading) return <p className="muted">Loading…</p>;
+  if (loading) return <p className="muted">{t("bot.card.loading")}</p>;
+
+  const policyOptions: [FarmCreationPolicy, string][] = [
+    ["open", t("farm.settings.general.policy.open")],
+    ["admin_only", t("farm.settings.general.policy.admin_only")],
+    ["disabled", t("farm.settings.general.policy.disabled")],
+  ];
 
   return (
     <section>
-      <h1>General</h1>
+      <h1>{t("farm.settings.tabs.general")}</h1>
 
       <div className="settings-section">
-        <label className="settings-label">Farm name</label>
+        <label className="settings-label">{t("farm.settings.general.name")}</label>
         <input
           type="text"
           value={settings.name}
@@ -183,7 +187,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Description</label>
+        <label className="settings-label">{t("farm.settings.general.description")}</label>
         <textarea
           rows={3}
           value={settings.description}
@@ -195,14 +199,8 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Hub creation policy</label>
-        {(
-          [
-            ["open", "Open — anyone can create"],
-            ["admin_only", "Admin only"],
-            ["disabled", "Disabled"],
-          ] as [FarmCreationPolicy, string][]
-        ).map(([value, label]) => (
+        <label className="settings-label">{t("farm.settings.general.policy.label")}</label>
+        {policyOptions.map(([value, label]) => (
           <label key={value} className="checkbox-label" style={{ display: "block", marginBottom: 4 }}>
             <input
               type="radio"
@@ -218,8 +216,8 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Max hubs per user</label>
-        <p className="muted">0 = unlimited</p>
+        <label className="settings-label">{t("farm.settings.general.max_per_user")}</label>
+        <p className="muted">{t("farm.settings.general.unlimited")}</p>
         <input
           type="number"
           min={0}
@@ -234,8 +232,8 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Max hubs total</label>
-        <p className="muted">0 = unlimited</p>
+        <label className="settings-label">{t("farm.settings.general.max_total")}</label>
+        <p className="muted">{t("farm.settings.general.unlimited")}</p>
         <input
           type="number"
           min={0}
@@ -250,7 +248,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Directory</label>
+        <label className="settings-label">{t("farm.settings.general.directory.label")}</label>
         <label className="checkbox-label">
           <input
             type="checkbox"
@@ -259,7 +257,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
               setSettings({ ...settings, directory_public: e.target.checked })
             }
           />
-          Directory public (list public hubs at /farm/hubs without auth)
+          {" "}{t("farm.settings.general.directory.public")}
         </label>
         <label className="checkbox-label">
           <input
@@ -272,12 +270,12 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
               })
             }
           />
-          Allow discovery listing (publish to the Voxply discovery network)
+          {" "}{t("farm.settings.general.directory.discovery")}
         </label>
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Languages</label>
+        <label className="settings-label">{t("farm.settings.general.languages")}</label>
         <p className="muted">
           BCP-47 codes, comma-separated (e.g. en, it, de). 1–5 values.
         </p>
@@ -290,7 +288,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Tags</label>
+        <label className="settings-label">{t("farm.settings.general.tags")}</label>
         {TAGS.map((tag) => (
           <label key={tag} className="checkbox-label" style={{ display: "inline-flex", marginRight: 12 }}>
             <input
@@ -304,7 +302,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Country</label>
+        <label className="settings-label">{t("farm.settings.general.country")}</label>
         <p className="muted">ISO 3166-1 alpha-2 (e.g. IT, US, DE)</p>
         <input
           type="text"
@@ -319,7 +317,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       </div>
 
       <div className="settings-section">
-        <label className="settings-label">Region</label>
+        <label className="settings-label">{t("farm.settings.general.region")}</label>
         <p className="muted">
           EU-West, EU-East, US-East, US-West, APAC, LATAM, MEA
         </p>
@@ -336,14 +334,14 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
       <div className="settings-section">
         {saveStatus === "ok" && (
           <p className="muted" style={{ color: "var(--success)", marginBottom: 8 }}>
-            Settings saved.
+            {t("farm.settings.general.saved")}
           </p>
         )}
         {saveStatus === "error" && (
           <p className="error-text" style={{ marginBottom: 8 }}>{saveError}</p>
         )}
         <button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t("farm.settings.general.saving") : t("farm.settings.general.save")}
         </button>
       </div>
     </section>
@@ -351,6 +349,7 @@ function GeneralTab({ farmUrl }: { farmUrl: string }) {
 }
 
 function HubsTab({ farmUrl }: { farmUrl: string }) {
+  const { t } = useTranslation();
   const [hubs, setHubs] = useState<FarmHubEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [suspendTarget, setSuspendTarget] = useState<FarmHubEntry | null>(null);
@@ -400,24 +399,24 @@ function HubsTab({ farmUrl }: { farmUrl: string }) {
     }
   }
 
-  if (loading) return <p className="muted">Loading…</p>;
+  if (loading) return <p className="muted">{t("bot.card.loading")}</p>;
 
   return (
     <section>
-      <h1>Hubs — {hubs.length}</h1>
+      <h1>{t("farm.settings.hubs.title", { count: hubs.length })}</h1>
       {actionError && <p className="error-text">{actionError}</p>}
       {hubs.length === 0 ? (
-        <p className="muted">No hubs yet.</p>
+        <p className="muted">{t("farm.settings.hubs.empty")}</p>
       ) : (
         <table className="members-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Owner</th>
-              <th>Visibility</th>
-              <th>Created</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t("farm.settings.hubs.col.name")}</th>
+              <th>{t("farm.settings.hubs.col.owner")}</th>
+              <th>{t("farm.settings.hubs.col.visibility")}</th>
+              <th>{t("farm.settings.hubs.col.created")}</th>
+              <th>{t("farm.settings.hubs.col.status")}</th>
+              <th>{t("farm.settings.hubs.col.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -446,9 +445,9 @@ function HubsTab({ farmUrl }: { farmUrl: string }) {
                 <td>{formatRelative(hub.created_at)}</td>
                 <td>
                   {hub.suspended_at ? (
-                    <span className="badge badge-danger">suspended</span>
+                    <span className="badge badge-danger">{t("farm.settings.hubs.status.suspended")}</span>
                   ) : (
-                    <span className="badge badge-green">active</span>
+                    <span className="badge badge-green">{t("farm.settings.hubs.status.active")}</span>
                   )}
                 </td>
                 <td>
@@ -457,14 +456,14 @@ function HubsTab({ farmUrl }: { farmUrl: string }) {
                       className="btn-small btn-secondary"
                       onClick={() => setSuspendTarget(hub)}
                     >
-                      {hub.suspended_at ? "Unsuspend" : "Suspend"}
+                      {hub.suspended_at ? t("farm.settings.hubs.unsuspend") : t("farm.settings.hubs.suspend")}
                     </button>
                     <button
                       className="btn-small"
                       style={{ color: "var(--danger)" }}
                       onClick={() => setDeleteTarget(hub)}
                     >
-                      Delete
+                      {t("farm.settings.hubs.delete")}
                     </button>
                   </div>
                 </td>
@@ -499,6 +498,7 @@ function HubsTab({ farmUrl }: { farmUrl: string }) {
 }
 
 function UsersTab({ farmUrl }: { farmUrl: string }) {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<FarmUserEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -544,20 +544,20 @@ function UsersTab({ farmUrl }: { farmUrl: string }) {
 
   return (
     <section>
-      <h1>Users — {total}</h1>
+      <h1>{t("farm.settings.users.title", { count: total })}</h1>
       {actionError && <p className="error-text">{actionError}</p>}
       {users.length === 0 && !loading ? (
-        <p className="muted">No users yet.</p>
+        <p className="muted">{t("farm.settings.users.empty")}</p>
       ) : (
         <table className="members-table">
           <thead>
             <tr>
-              <th>Pubkey</th>
-              <th>First seen</th>
-              <th>Last seen</th>
-              <th>Hubs owned</th>
-              <th>Sessions</th>
-              <th>Actions</th>
+              <th>{t("farm.settings.users.col.pubkey")}</th>
+              <th>{t("farm.settings.users.col.first_seen")}</th>
+              <th>{t("farm.settings.users.col.last_seen")}</th>
+              <th>{t("farm.settings.users.col.hubs_owned")}</th>
+              <th>{t("farm.settings.users.col.sessions")}</th>
+              <th>{t("farm.settings.users.col.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -578,7 +578,7 @@ function UsersTab({ farmUrl }: { farmUrl: string }) {
                     disabled={u.active_sessions === 0}
                     onClick={() => void handleRevokeSessions(u.public_key)}
                   >
-                    Revoke sessions
+                    {t("farm.settings.users.revoke_sessions")}
                   </button>
                 </td>
               </tr>
@@ -586,11 +586,11 @@ function UsersTab({ farmUrl }: { farmUrl: string }) {
           </tbody>
         </table>
       )}
-      {loading && <p className="muted">Loading…</p>}
+      {loading && <p className="muted">{t("bot.card.loading")}</p>}
       {hasMore && !loading && (
         <div style={{ marginTop: 12 }}>
           <button className="btn-secondary" onClick={() => void fetchPage(page + 1)}>
-            Load more
+            {t("discover.load_more")}
           </button>
         </div>
       )}
@@ -599,10 +599,12 @@ function UsersTab({ farmUrl }: { farmUrl: string }) {
 }
 
 export function FarmSettingsPage({ farmUrl, tab, onTab, onClose }: Props) {
+  const { t } = useTranslation();
+
   const tabs: { id: FarmAdminTab; label: string }[] = [
-    { id: "general", label: "General" },
-    { id: "hubs", label: "Hubs" },
-    { id: "users", label: "Users" },
+    { id: "general", label: t("farm.settings.tabs.general") },
+    { id: "hubs", label: t("farm.settings.tabs.hubs") },
+    { id: "users", label: t("farm.settings.tabs.users") },
   ];
 
   useEffect(() => {
@@ -617,25 +619,25 @@ export function FarmSettingsPage({ farmUrl, tab, onTab, onClose }: Props) {
     <FocusTrap>
     <div className="settings-page">
       <aside className="settings-nav">
-        <h2>Farm settings</h2>
+        <h2>{t("farm.settings.title")}</h2>
         <ul>
-          {tabs.map((t) => (
-            <li key={t.id}>
+          {tabs.map((tab_item) => (
+            <li key={tab_item.id}>
               <button
-                className={`settings-nav-item ${tab === t.id ? "active" : ""}`}
-                onClick={() => onTab(t.id)}
+                className={`settings-nav-item ${tab === tab_item.id ? "active" : ""}`}
+                onClick={() => onTab(tab_item.id)}
               >
-                {t.label}
+                {tab_item.label}
               </button>
             </li>
           ))}
         </ul>
         <button className="settings-nav-close" onClick={onClose}>
-          Close (ESC)
+          {t("settings.close")}
         </button>
       </aside>
       <main className="settings-content">
-        <button className="settings-close-x" onClick={onClose} title="Close">
+        <button className="settings-close-x" onClick={onClose} title={t("modal.close")}>
           ×
         </button>
         {tab === "general" && <GeneralTab farmUrl={farmUrl} />}

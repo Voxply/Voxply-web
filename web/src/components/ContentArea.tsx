@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   Channel,
   Hub,
@@ -163,6 +164,7 @@ export function ContentArea({
   sharing, shareKbps, onStopShare,
   assertiveAnnouncement = "",
 }: Props) {
+  const { t } = useTranslation();
   const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandEntry[]>([]);
   const [slashSelectedIdx, setSlashSelectedIdx] = useState(0);
   const [botCard, setBotCard] = useState<{ pubkey: string; rect: DOMRect } | null>(null);
@@ -186,7 +188,7 @@ export function ContentArea({
       if (batch.length === 1) {
         setLiveAnnouncement(batch[0]);
       } else {
-        setLiveAnnouncement(`${batch.length} new messages`);
+        setLiveAnnouncement(t("message.count.new_messages", { count: batch.length }));
       }
       announceTimerRef.current = null;
     }, 2000);
@@ -283,13 +285,13 @@ export function ContentArea({
       <main className="content">
         {activeHubId && hubConnected[activeHubId] === false && (
           <div className="reconnect-banner">
-            <span>{reconnectingHubs[activeHubId] ? "Reconnecting…" : "Disconnected from hub."}</span>
+            <span>{reconnectingHubs[activeHubId] ? t("reconnect.reconnecting") : t("reconnect.disconnected")}</span>
             <button
               className="btn-small"
               onClick={onReconnect}
               disabled={!!reconnectingHubs[activeHubId]}
             >
-              {reconnectingHubs[activeHubId] ? "Working…" : "Reconnect"}
+              {reconnectingHubs[activeHubId] ? t("reconnect.working") : t("reconnect.button")}
             </button>
           </div>
         )}
@@ -328,11 +330,11 @@ export function ContentArea({
                         className="dm-delivery-failed"
                         title="The sender's hub couldn't deliver this to one or more recipients after retries."
                       >
-                        ⚠ Delivery failed
+                        {t("dm.delivery_failed")}
                       </span>
                     ) : null;
                     const lockIcon = m.is_encrypted
-                      ? <span className="dm-lock-icon" title="End-to-end encrypted">🔒</span>
+                      ? <span className="dm-lock-icon" title={t("dm.encrypted")}>🔒</span>
                       : null;
                     const actionText = meAction(m.content);
                     if (actionText !== null) {
@@ -386,7 +388,7 @@ export function ContentArea({
                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
                 onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) onAttachFiles(e.dataTransfer.files); }}
               >
-                <label className="btn-attach" title="Attach file">
+                <label className="btn-attach" title={t("composer.attach")}>
                   📎
                   <input
                     type="file"
@@ -402,13 +404,13 @@ export function ContentArea({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSendDm(); }
                   }}
-                  placeholder="Send a message..."
+                  placeholder={t("composer.send")}
                 />
-                <button onClick={onSendDm}>Send</button>
+                <button onClick={onSendDm}>{t("composer.send")}</button>
               </div>
             </>
           ) : (
-            <div className="no-channel"><p>Select a conversation</p></div>
+            <div className="no-channel"><p>{t("dm.no_selection")}</p></div>
           )
         ) : selectedChannel ? (
           <>
@@ -419,7 +421,7 @@ export function ContentArea({
                   <p
                     className={`channel-description ${isAdmin ? "editable" : ""}`}
                     onClick={() => { if (isAdmin) onOpenEditDescription(selectedChannel); }}
-                    title={isAdmin ? "Click to edit" : undefined}
+                    title={isAdmin ? t("channel.description.click_edit") : undefined}
                   >
                     {selectedChannel.description}
                   </p>
@@ -427,9 +429,9 @@ export function ContentArea({
                   <p
                     className="channel-description editable muted"
                     onClick={() => onOpenEditDescription(selectedChannel)}
-                    title="Click to add a description"
+                    title={t("channel.description.click_add")}
                   >
-                    Add a description…
+                    {t("channel.add_description")}
                   </p>
                 ) : null}
               </div>
@@ -438,17 +440,17 @@ export function ContentArea({
                   <button
                     onClick={onVoiceLeave}
                     className="btn-voice-header btn-voice-leave"
-                    title="Leave voice"
+                    title={t("voice.leave")}
                   >
-                    🔴 Leave Voice
+                    🔴 {t("voice.leave.header")}
                   </button>
                 ) : (
                   <button
                     onClick={onVoiceJoin}
                     className="btn-voice-header btn-voice-join"
-                    title="Join voice in this channel"
+                    title={t("voice.join")}
                   >
-                    🎙 Join Voice
+                    🎙 {t("voice.join.header")}
                   </button>
                 )
               )}
@@ -456,7 +458,7 @@ export function ContentArea({
                 <button
                   onClick={() => setPickerOpen(true)}
                   className="btn-icon-header"
-                  title="Activities"
+                  title={t("content.activities")}
                 >
                   <GamepadIcon size={16} />
                 </button>
@@ -464,14 +466,14 @@ export function ContentArea({
               <button
                 onClick={() => searchOpen ? onCloseSearch() : onSetSearchOpen(true)}
                 className="btn-icon-header"
-                title="Search messages"
+                title={t("content.search.title")}
               >
                 🔍
               </button>
               <button
                 onClick={() => onSetMemberSidebarHidden(!memberSidebarHidden)}
                 className="btn-icon-header"
-                title={memberSidebarHidden ? "Show member list" : "Hide member list"}
+                title={memberSidebarHidden ? t("content.members.show") : t("content.members.hide")}
               >
                 {memberSidebarHidden ? "👥" : "👤"}
               </button>
@@ -484,14 +486,14 @@ export function ContentArea({
                   value={searchQuery}
                   onChange={(e) => onSetSearchQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Escape") onCloseSearch(); }}
-                  placeholder={`Search in #${selectedChannel.name}…`}
+                  placeholder={t("channel.search.placeholder", { channel: selectedChannel.name })}
                 />
                 {searchResults !== null && (
                   <span className="muted search-count">
-                    {searchResults.length} match{searchResults.length === 1 ? "" : "es"}
+                    {t("channel.search.count", { count: searchResults.length })}
                   </span>
                 )}
-                <button onClick={onCloseSearch} className="btn-small">Close</button>
+                <button onClick={onCloseSearch} className="btn-small">{t("channel.search.close")}</button>
               </div>
             )}
             {activeScreenShares.length > 0 && (
@@ -502,37 +504,34 @@ export function ContentArea({
             )}
             {sharing && (
               <div className="screen-share-active-bar">
-                <span>You're sharing</span>
+                <span>{t("voice.sharing")}</span>
                 {(shareKbps ?? 0) > 0 && (
                   <span className="muted">{shareKbps} kbps</span>
                 )}
                 <button className="stop-btn" onClick={onStopShare}>
-                  Stop sharing
+                  {t("voice.screen_share.stop")}
                 </button>
               </div>
             )}
-            <ol aria-label="Messages" className="messages" ref={messagesContainerRef} onScroll={onMessagesScroll}>
+            <ol aria-label={t("message.actions.aria")} className="messages" ref={messagesContainerRef} onScroll={onMessagesScroll}>
               {(searchResults ?? messages).length === 0 && (
                 <li className="channel-empty">
                   {searchResults !== null ? (
-                    <p>No messages match your search.</p>
+                    <p>{t("channel.empty.no_search")}</p>
                   ) : (
                     <>
                       <div className="channel-empty-icon">👋</div>
-                      <h2>Welcome to #{selectedChannel.name}</h2>
+                      <h2>{t("channel.empty.welcome", { channel: selectedChannel.name })}</h2>
                       <p>
                         {selectedChannel.description
                           ? selectedChannel.description
                           : "This is the start of the channel — say hello!"}
                       </p>
                       <ul className="channel-empty-tips">
-                        <li>Click <strong>Join Voice</strong> in the header to start a voice session here — or double-click any channel in the sidebar.</li>
-                        <li><strong>Drag a file</strong> into the message area to share it (up to 3 MB).</li>
-                        <li>
-                          Type <code>@name</code> to mention someone,{" "}
-                          <code>/me</code> for an action, or paste a code block with <code>```</code>.
-                        </li>
-                        <li>Press <kbd>Ctrl</kbd>+<kbd>K</kbd> to jump to another channel from anywhere.</li>
+                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_voice") }} />
+                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_drag") }} />
+                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_mentions") }} />
+                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_jump") }} />
                       </ul>
                     </>
                   )}
@@ -611,7 +610,7 @@ export function ContentArea({
                           <div
                             className="message-reply-preview"
                             onClick={() => m.reply_to && onScrollToMessage(m.reply_to.message_id)}
-                            title="Jump to original"
+                            title={t("message.reply.jump")}
                           >
                             <span className="reply-arrow" aria-hidden="true">↪</span>
                             <span className="reply-author">
@@ -634,10 +633,10 @@ export function ContentArea({
                           {senderLabel}
                         </span>
                         {senderUser?.is_bot && !senderUser?.is_webhook && (
-                          <span className="bot-badge" aria-hidden="true">BOT</span>
+                          <span className="bot-badge" aria-hidden="true">{t("bot.badge")}</span>
                         )}
                         {senderUser?.is_webhook && (
-                          <span className="bot-badge bot-badge--app" aria-hidden="true">APP</span>
+                          <span className="bot-badge bot-badge--app" aria-hidden="true">{t("app.badge")}</span>
                         )}
                         {isEditing ? (
                           <span className="message-edit">
@@ -651,8 +650,8 @@ export function ContentArea({
                               }}
                               autoFocus
                             />
-                            <button onClick={onSaveEdit} className="btn-small">Save</button>
-                            <button onClick={onCancelEdit} className="btn-small btn-secondary-small">Cancel</button>
+                            <button onClick={onSaveEdit} className="btn-small">{t("message.edit.save")}</button>
+                            <button onClick={onCancelEdit} className="btn-small btn-secondary-small">{t("message.edit.cancel")}</button>
                           </span>
                         ) : (
                           <>
@@ -670,12 +669,12 @@ export function ContentArea({
                                 className="message-edited-tag"
                                 title={`Edited ${formatFullTimestamp(m.edited_at)}`}
                               >
-                                (edited)
+                                {t("message.edited")}
                               </span>
                             )}
-                            <div role="toolbar" aria-label="Message actions" className="message-actions">
+                            <div role="toolbar" aria-label={t("message.actions.aria")} className="message-actions">
                               <ReactionPicker onPick={(emoji) => onToggleReaction(m.id, emoji)} />
-                              <button className="message-action" onClick={() => onSetReplyTarget(m)} title="Reply" aria-label="Reply">
+                              <button className="message-action" onClick={() => onSetReplyTarget(m)} title={t("message.action.reply")} aria-label={t("message.action.reply")}>
                                 ↩
                               </button>
                               <button
@@ -686,18 +685,18 @@ export function ContentArea({
                                   const link = `voxply://${hub.hub_url.replace(/^https?:\/\//, "")}/channel/${m.channel_id}/message/${m.id}`;
                                   try {
                                     await navigator.clipboard.writeText(link);
-                                    onToast("Link copied");
+                                    onToast(t("message.action.link_copied"));
                                   } catch (e) {
                                     onError(String(e));
                                   }
                                 }}
-                                title="Copy link"
-                                aria-label="Copy link"
+                                title={t("message.action.copy_link")}
+                                aria-label={t("message.action.copy_link")}
                               >
                                 🔗
                               </button>
                               {isMine && (
-                                <button className="message-action" onClick={() => onStartEdit(m)} title="Edit" aria-label="Edit message">
+                                <button className="message-action" onClick={() => onStartEdit(m)} title={t("message.action.edit")} aria-label={t("message.action.edit")}>
                                   ✎
                                 </button>
                               )}
@@ -705,8 +704,8 @@ export function ContentArea({
                                 <button
                                   className="message-action danger"
                                   onClick={() => onDeleteMessage(m.id)}
-                                  title="Delete"
-                                  aria-label="Delete message"
+                                  title={t("message.action.delete")}
+                                  aria-label={t("message.action.delete")}
                                 >
                                   ✕
                                 </button>
@@ -730,7 +729,7 @@ export function ContentArea({
                               />
                             )}
                             {isEphemeral && (
-                              <div className="message-ephemeral-label">Only you can see this</div>
+                              <div className="message-ephemeral-label">{t("message.ephemeral")}</div>
                             )}
                           </>
                         )}
@@ -749,25 +748,25 @@ export function ContentArea({
                   onClearFirstNotify();
                 }}
               >
-                ↑ Jump to first notification
+                {t("message.jump.first_notification")}
               </button>
             )}
             {!stickToBottom && newWhileScrolledUp > 0 && (
               <button className="jump-to-bottom" onClick={onJumpToBottom}>
-                ↓ {newWhileScrolledUp} new
+                {t("message.jump.bottom", { count: newWhileScrolledUp })}
               </button>
             )}
             <TypingIndicator typers={Object.values(typingByKey)} />
             {replyTarget && (
               <div className="reply-banner">
-                <span className="muted">Replying to </span>
+                <span className="muted">{t("composer.reply_banner.replying_to")} </span>
                 <strong>
                   {users.find((u) => u.public_key === replyTarget.sender)?.display_name ||
                     replyTarget.sender_name ||
                     formatPubkey(replyTarget.sender)}
                 </strong>
                 <span className="reply-snippet">{replyTarget.content.slice(0, 80)}</span>
-                <button className="reply-banner-close" onClick={() => onSetReplyTarget(null)} title="Cancel reply">
+                <button className="reply-banner-close" onClick={() => onSetReplyTarget(null)} title={t("composer.reply_banner.cancel")}>
                   ×
                 </button>
               </div>
@@ -779,13 +778,13 @@ export function ContentArea({
               />
             )}
             <form
-              aria-label="Compose message"
+              aria-label={t("composer.form.aria")}
               className="input-area"
               onSubmit={(e) => { e.preventDefault(); onSend(); }}
               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
               onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) onAttachFiles(e.dataTransfer.files); }}
             >
-              <label className="btn-attach" title="Attach file">
+              <label className="btn-attach" title={t("composer.attach")}>
                 📎
                 <input
                   type="file"
@@ -819,12 +818,12 @@ export function ContentArea({
                   onKeyDown={handleSlashKeyDown}
                   placeholder={
                     replyTarget
-                      ? `Reply to ${users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user"}`
-                      : `Message #${selectedChannel.name}`
+                      ? t("composer.placeholder.reply", { name: users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user" })
+                      : t("composer.placeholder", { channel: selectedChannel.name })
                   }
                 />
               </div>
-              <button type="submit">Send</button>
+              <button type="submit" aria-label={t("composer.send.aria")}>{t("composer.send")}</button>
             </form>
           </>
         ) : selectedAllianceChannel ? (
@@ -875,16 +874,16 @@ export function ContentArea({
                 }}
                 placeholder={`Message ${selectedAllianceChannel.channel.hub_name} · #${selectedAllianceChannel.channel.channel_name}`}
               />
-              <button onClick={onSendAllianceMessage}>Send</button>
+              <button onClick={onSendAllianceMessage}>{t("composer.send")}</button>
             </div>
           </>
         ) : (
-          <div className="no-channel"><p>Select a channel to start chatting</p></div>
+          <div className="no-channel"><p>{t("channel.no_selection")}</p></div>
         )}
       </main>
 
       {view === "channels" && !memberSidebarHidden && (
-        <aside className="user-list-sidebar" aria-label="Members">
+        <aside className="user-list-sidebar" aria-label={t("member.list.title")}>
           <UserListGrouped
             users={users}
             inVoice={voiceActiveUsers}
