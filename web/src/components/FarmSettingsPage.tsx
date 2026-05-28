@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FocusTrap } from "./FocusTrap";
 import {
   getFarmSettings,
   patchFarmSettings,
@@ -604,7 +605,16 @@ export function FarmSettingsPage({ farmUrl, tab, onTab, onClose }: Props) {
     { id: "users", label: "Users" },
   ];
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
+    <FocusTrap>
     <div className="settings-page">
       <aside className="settings-nav">
         <h2>Farm settings</h2>
@@ -633,5 +643,6 @@ export function FarmSettingsPage({ farmUrl, tab, onTab, onClose }: Props) {
         {tab === "users" && <UsersTab farmUrl={farmUrl} />}
       </main>
     </div>
+    </FocusTrap>
   );
 }

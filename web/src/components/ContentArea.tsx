@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import type {
   Channel,
   Hub,
@@ -165,6 +165,25 @@ export function ContentArea({
   const [botCard, setBotCard] = useState<{ pubkey: string; rect: DOMRect } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeGame, setActiveGame] = useState<InstalledGame | null>(null);
+  const [focusedMessageIndex, setFocusedMessageIndex] = useState<number>(-1);
+  const messageRowRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  function handleMessageKeyDown(e: React.KeyboardEvent<HTMLDivElement>, index: number, displayedMessages: Message[]) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = Math.min(index + 1, displayedMessages.length - 1);
+      setFocusedMessageIndex(next);
+      messageRowRefs.current[next]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prev = Math.max(index - 1, 0);
+      setFocusedMessageIndex(prev);
+      messageRowRefs.current[prev]?.focus();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setFocusedMessageIndex(-1);
+    }
+  }
 
   const openBotCard = useCallback((pubkey: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -489,6 +508,7 @@ export function ContentArea({
               {(searchResults ?? messages)
                 .filter((m) => !blockedUsers.has(m.sender))
                 .map((m, i, arr) => {
+                  const displayedMessages = arr;
                   const showSeparator = i === 0 || dayKey(m.created_at) !== dayKey(arr[i - 1].created_at);
                   const isMine = m.sender === publicKey;
                   const canDelete =
@@ -509,8 +529,11 @@ export function ContentArea({
                           </div>
                         )}
                         <div
+                          ref={(el) => { messageRowRefs.current[i] = el; }}
                           id={`msg-${m.id}`}
-                          className={`message message-action ${isMentioned ? "message-mentioned" : ""}`}
+                          tabIndex={focusedMessageIndex === i ? 0 : -1}
+                          onKeyDown={(e) => handleMessageKeyDown(e, i, displayedMessages)}
+                          className={`message message-action message-row ${isMentioned ? "message-mentioned" : ""}`}
                         >
                           <span className="action-asterisk">*</span>
                           <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
@@ -531,8 +554,11 @@ export function ContentArea({
                         </div>
                       )}
                       <div
+                        ref={(el) => { messageRowRefs.current[i] = el; }}
                         id={`msg-${m.id}`}
-                        className={`message ${isMentioned ? "message-mentioned" : ""} ${isEphemeral ? "message-ephemeral" : ""}`}
+                        tabIndex={focusedMessageIndex === i ? 0 : -1}
+                        onKeyDown={(e) => handleMessageKeyDown(e, i, displayedMessages)}
+                        className={`message message-row ${isMentioned ? "message-mentioned" : ""} ${isEphemeral ? "message-ephemeral" : ""}`}
                       >
                         {m.reply_to && (
                           <div

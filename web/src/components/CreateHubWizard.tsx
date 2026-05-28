@@ -7,6 +7,7 @@ import {
 } from "@platform";
 import type { Hub, FarmPublicInfo, FarmHubQuota, CreatedFarmHub } from "../types";
 import type { WsHandlers } from "@platform";
+import { FocusTrap } from "./FocusTrap";
 
 type Visibility = "public" | "private";
 
@@ -167,6 +168,14 @@ export function CreateHubWizard({ knownFarms, wsHandlers, onHubCreated, onClose 
     void probeAll();
   }, [knownFarms]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   async function handleProbeCustom() {
     if (!customUrl.trim()) return;
     setProbeCustomStatus("loading");
@@ -243,6 +252,7 @@ export function CreateHubWizard({ knownFarms, wsHandlers, onHubCreated, onClose 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
+      <FocusTrap>
       <div
         className="modal"
         style={{ maxWidth: 560, width: "100%" }}
@@ -415,6 +425,7 @@ export function CreateHubWizard({ knownFarms, wsHandlers, onHubCreated, onClose 
           </>
         )}
       </div>
+      </FocusTrap>
     </div>
   );
 }

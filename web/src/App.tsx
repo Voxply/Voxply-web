@@ -29,6 +29,7 @@ import { ContentArea } from "@components/ContentArea";
 import { AddHubModal } from "@components/AddHubModal";
 import { FarmSettingsPage } from "@components/FarmSettingsPage";
 import { CreateHubWizard } from "@components/CreateHubWizard";
+import { KeyboardShortcuts } from "@components/KeyboardShortcuts";
 import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@shared/utils/channels";
 import type { TreeNode } from "@shared/utils/channels";
@@ -245,6 +246,7 @@ export default function App() {
   const [isFarmAdmin, setIsFarmAdmin] = useState(false);
   const [showCreateHub, setShowCreateHub] = useState(false);
   const [knownFarms, setKnownFarms] = useState<{ url: string; name: string }[]>([]);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // === Refs ===
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -684,6 +686,64 @@ export default function App() {
     [channels],
   );
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+      const tag = (e.target as HTMLElement)?.tagName;
+      const inInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable;
+
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        setShowKeyboardShortcuts((v) => !v);
+        return;
+      }
+      if (mod && e.key === ",") {
+        e.preventDefault();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+        return;
+      }
+      if (mod && e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveHubIdState((prev) => {
+          const idx = hubs.findIndex((h) => h.hub_id === prev);
+          const next = hubs[idx + 1];
+          return next ? next.hub_id : prev;
+        });
+        return;
+      }
+      if (mod && e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveHubIdState((prev) => {
+          const idx = hubs.findIndex((h) => h.hub_id === prev);
+          const next = hubs[idx - 1];
+          return next ? next.hub_id : prev;
+        });
+        return;
+      }
+      if (!inInput && e.key === "/") {
+        e.preventDefault();
+        messageInputRef.current?.focus();
+        return;
+      }
+      if (e.key === "Alt" && (e.code === "ArrowDown" || e.code === "ArrowUp")) {
+        e.preventDefault();
+        const visibleChannels = channels.filter((c) => !c.is_category);
+        const idx = visibleChannels.findIndex((c) => c.id === selectedChannel?.id);
+        const next = e.code === "ArrowDown"
+          ? visibleChannels[idx + 1]
+          : visibleChannels[idx - 1];
+        if (next) setSelectedChannel(next);
+        return;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hubs, channels, selectedChannel, messageInputRef]);
+
   // === Render ===
 
   if (ready === "checking") {
@@ -707,6 +767,10 @@ export default function App() {
         >
           Voice is not available in the browser client. Open Voxply on your desktop to join.
         </div>
+      )}
+
+      {showKeyboardShortcuts && (
+        <KeyboardShortcuts onClose={() => setShowKeyboardShortcuts(false)} />
       )}
 
       {showFarmSettings && (
