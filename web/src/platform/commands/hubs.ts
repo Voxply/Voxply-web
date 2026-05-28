@@ -25,6 +25,7 @@ interface InfoResponse {
   public_key: string;
   name: string;
   icon: string | null;
+  farm_url?: string | null;
 }
 
 interface ChallengeResponse {
@@ -35,8 +36,12 @@ interface VerifyResponse {
   token: string;
 }
 
+function authBaseUrl(info: InfoResponse, hub_url: string): string {
+  return info.farm_url ?? hub_url;
+}
+
 async function authenticate(
-  hub_url: string,
+  auth_url: string,
   pubkeyHex: string,
   seedHex: string,
   security_nonce: number,
@@ -44,7 +49,7 @@ async function authenticate(
   invite_code?: string,
 ): Promise<string> {
   const challengeRes: ChallengeResponse = await rawFetch(
-    `${hub_url}/auth/challenge`,
+    `${auth_url}/auth/challenge`,
     { method: "POST", body: JSON.stringify({ public_key: pubkeyHex }) },
   ).then((r) => r.json() as Promise<ChallengeResponse>);
 
@@ -60,7 +65,7 @@ async function authenticate(
   };
   if (invite_code) body["invite_code"] = invite_code;
 
-  const verifyRes: VerifyResponse = await rawFetch(`${hub_url}/auth/verify`, {
+  const verifyRes: VerifyResponse = await rawFetch(`${auth_url}/auth/verify`, {
     method: "POST",
     body: JSON.stringify(body),
   }).then((r) => r.json() as Promise<VerifyResponse>);
@@ -94,7 +99,7 @@ export async function addHub(
   const pubkeyHex = publicKeyHex(seedHex);
 
   const token = await authenticate(
-    url,
+    authBaseUrl(info, url),
     pubkeyHex,
     seedHex,
     identity.security_nonce,
@@ -188,13 +193,17 @@ export async function reauthorizeHub(
   const s = getSession(hub_id);
   if (!s) throw new Error("Hub not connected");
 
+  const info: InfoResponse = await rawFetch(`${s.hub_url}/info`).then(
+    (r) => r.json() as Promise<InfoResponse>,
+  );
+
   const identity = await loadIdentity();
   if (!identity) throw new Error("No identity");
 
   const seedHex = identity.seed_hex;
   const pubkeyHex = publicKeyHex(seedHex);
   const token = await authenticate(
-    s.hub_url,
+    authBaseUrl(info, s.hub_url),
     pubkeyHex,
     seedHex,
     identity.security_nonce,
@@ -250,8 +259,11 @@ export async function restorePersistedHubs(handlers: WsHandlers): Promise<Hub[]>
     try {
       let token = loadToken(hub.hub_id);
       if (!token) {
+        const hubInfo: InfoResponse = await rawFetch(`${hub.hub_url}/info`).then(
+          (r) => r.json() as Promise<InfoResponse>,
+        );
         token = await authenticate(
-          hub.hub_url,
+          authBaseUrl(hubInfo, hub.hub_url),
           pubkeyHex,
           seedHex,
           identity.security_nonce,
