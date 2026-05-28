@@ -1,4 +1,5 @@
 import { hubFetch } from "../http";
+import { activeSession } from "../session";
 import type {
   BotProfile,
   ExternalBotRow,
@@ -69,4 +70,15 @@ export async function adminRegenerateWebhook(webhookId: string): Promise<Webhook
 
 export async function adminDeleteWebhook(webhookId: string): Promise<void> {
   await hubFetch(`/admin/webhooks/${webhookId}`, { method: "DELETE" });
+}
+
+export function sendComponentInteraction(
+  messageId: string,
+  customId: string,
+  values: string[],
+): void {
+  const { ws } = activeSession();
+  if (ws) {
+    ws.send({ type: "component_interaction", message_id: messageId, custom_id: customId, values });
+  }
 }

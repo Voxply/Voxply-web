@@ -40,6 +40,8 @@ export {
   unsubscribeChannel,
 } from "./commands/messages";
 
+export { sendComponentInteraction } from "./commands/bots";
+
 export {
   listConversations,
   createConversation,
