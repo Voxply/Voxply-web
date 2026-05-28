@@ -179,6 +179,10 @@ export default function App() {
   const [activeHubId, setActiveHubIdState] = useState<string | null>(null);
   const [hubConnected, setHubConnected] = useState<Record<string, boolean>>({});
   const [reconnectingHubs] = useState<Record<string, boolean>>({});
+  const [assertiveAnnouncement, setAssertiveAnnouncement] = useState("");
+  const [voicePoliteAnnouncement, setVoicePoliteAnnouncement] = useState("");
+  const voiceAnnounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingVoiceAnnouncementsRef = useRef<string[]>([]);
   const [pingByHub, setPingByHub] = useState<Record<string, number | null>>({});
   const [hubDropdownOpen, setHubDropdownOpen] = useState(false);
   const [hubUrl, setHubUrl] = useState("http://localhost:3000");
@@ -250,7 +254,8 @@ export default function App() {
 
   // === Refs ===
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndChannelRef = useRef<HTMLLIElement | null>(null);
+  const messagesContainerRef = useRef<HTMLOListElement | null>(null);
   const messageInputRef = useRef<HTMLInputElement | null>(null);
   const screenShareViewerRef = useRef<ScreenShareViewerRef | null>(null);
 
@@ -362,7 +367,20 @@ export default function App() {
     onScreenShare: () => {},
     onStatusChange: (connected) => {
       const id = activeHubIdRef.current;
-      if (id) setHubConnected((prev) => ({ ...prev, [id]: connected }));
+      if (id) {
+        setHubConnected((prev) => {
+          const was = prev[id];
+          if (id === activeHubIdRef.current) {
+            const hubName = hubs.find((h) => h.hub_id === id)?.hub_name ?? "hub";
+            if (connected && was === false) {
+              setAssertiveAnnouncement(`Reconnected to ${hubName}.`);
+            } else if (!connected && was !== false) {
+              setAssertiveAnnouncement(`Disconnected from ${hubName}. Reconnecting…`);
+            }
+          }
+          return { ...prev, [id]: connected };
+        });
+      }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
@@ -756,6 +774,22 @@ export default function App() {
 
   return (
     <div className="app-layout">
+      <div
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {assertiveAnnouncement}
+      </div>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {voicePoliteAnnouncement}
+      </div>
       {voiceToast && (
         <div
           style={{
@@ -913,6 +947,7 @@ export default function App() {
         typingByKey={typingByKey}
         dmTypingByKey={dmTypingByKey}
         messagesEndRef={messagesEndRef}
+        messagesEndChannelRef={messagesEndChannelRef}
         messagesContainerRef={messagesContainerRef}
         messageInputRef={messageInputRef}
         onReconnect={() => {}}
@@ -948,6 +983,7 @@ export default function App() {
         onError={() => {}}
         activeScreenShares={[]}
         screenShareViewerRef={screenShareViewerRef}
+        assertiveAnnouncement={assertiveAnnouncement}
       />
 
       {showAddHub && (

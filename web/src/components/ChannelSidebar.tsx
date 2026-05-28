@@ -209,7 +209,7 @@ export function ChannelSidebar({
   }, [flatVisible, activeHubId, collapsedCategories, onToggleCategoryCollapsed, onSelectChannel]);
 
   return (
-    <div className="sidebar">
+    <nav className="sidebar" aria-label="Channels">
       {view === "channels" && (
         <div className="hub-header" ref={hubHeaderRef}>
           <button
@@ -328,6 +328,7 @@ export function ChannelSidebar({
                         channel={n.node}
                         selected={selectedChannel?.id === n.node.id}
                         unread={!!activeHubId && !!unreadByChannel[activeHubId]?.[n.node.id]}
+                        unreadCount={activeHubId ? Object.keys(unreadByChannel[activeHubId] ?? {}).filter(id => id === n.node.id).length : 0}
                         muted={!!activeHubId && effectiveNotifyMode(activeHubId, n.node.id) === "silent"}
                         participants={voicePartByChannel[n.node.id] ?? []}
                         isCurrentVoiceChannel={voiceChannelId === n.node.id}
@@ -511,6 +512,8 @@ export function ChannelSidebar({
                 <button
                   onClick={onToggleSelfMute}
                   className={`btn-icon-gear ${selfMuted ? "active" : ""}`}
+                  aria-pressed={selfMuted}
+                  aria-label={selfMuted ? "Unmute microphone" : "Mute microphone"}
                   title={selfMuted ? "Unmute mic" : "Mute mic"}
                 >
                   {selfMuted ? "🚫🎙️" : "🎙️"}
@@ -518,6 +521,8 @@ export function ChannelSidebar({
                 <button
                   onClick={onToggleSelfDeafen}
                   className={`btn-icon-gear ${selfDeafened ? "active" : ""}`}
+                  aria-pressed={selfDeafened}
+                  aria-label={selfDeafened ? "Undeafen" : "Deafen"}
                   title={selfDeafened ? "Undeafen" : "Deafen"}
                 >
                   {selfDeafened ? "🚫🔊" : "🔊"}
@@ -554,6 +559,6 @@ export function ChannelSidebar({
           </button>
         </div>
       </div>
-    </div>
+    </nav>
   );
 }
