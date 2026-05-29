@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
+import { flattenTree, descendantIds, computeDepth } from "@shared/utils/channels";
 import type {
   Channel,
   Attachment,
@@ -30,6 +31,8 @@ import { AddHubModal } from "@components/AddHubModal";
 import { FarmSettingsPage } from "@components/FarmSettingsPage";
 import { CreateHubWizard } from "@components/CreateHubWizard";
 import { KeyboardShortcuts } from "@components/KeyboardShortcuts";
+import { HubAdminPage } from "./components/HubAdminPage";
+import type { HubAdminTab } from "./components/HubAdminPage";
 import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@shared/utils/channels";
 import type { TreeNode } from "@shared/utils/channels";
@@ -238,6 +241,20 @@ export default function App() {
   const [pinnedChannels, setPinnedChannels] = useState<Record<string, Record<string, boolean>>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, Record<string, boolean>>>({});
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
+  const [maxChannelDepth, setMaxChannelDepth] = useState(0);
+
+  // === Hub admin ===
+  const [showHubAdmin, setShowHubAdmin] = useState(false);
+  const [hubAdminTab, setHubAdminTab] = useState<HubAdminTab>("overview");
+  const [hubAdminName, setHubAdminName] = useState("");
+  const [hubAdminDescription, setHubAdminDescription] = useState("");
+  const [hubAdminIcon, setHubAdminIcon] = useState("");
+  const [hubAdminRequireApproval, setHubAdminRequireApproval] = useState(false);
+  const [hubAdminMinLevel, setHubAdminMinLevel] = useState(0);
+  const [hubAdminMembers, setHubAdminMembers] = useState<MemberAdminInfo[]>([]);
+  const [hubAdminBans, setHubAdminBans] = useState<BanInfo[]>([]);
+  const [hubAdminInvites, setHubAdminInvites] = useState<InviteInfo[]>([]);
+  const [hubAdminPending, setHubAdminPending] = useState<PendingUser[]>([]);
 
   // === Profiles ===
   const [namedProfiles] = useState<NamedProfile[]>([]);
@@ -569,6 +586,96 @@ export default function App() {
     } catch {}
   }
 
+  async function openHubAdmin() {
+    setShowHubAdmin(true);
+    setHubAdminTab("overview");
+    try {
+      const { getHubSettings } = await import("./platform/commands/hubAdmin");
+      const s = await getHubSettings();
+      setHubAdminName(s.hub_name);
+      setHubAdminDescription(s.hub_description ?? "");
+      setHubAdminIcon(s.hub_icon ?? "");
+      setHubAdminRequireApproval(s.require_approval ?? false);
+      setHubAdminMinLevel(s.min_security_level ?? 0);
+      setMaxChannelDepth(s.max_channel_depth ?? 0);
+    } catch { /* prefill with known hub name */ setHubAdminName(hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? ""); }
+    try {
+      const [members, bans, invites, pending] = await Promise.allSettled([
+        hubFetch("/admin/members").then((r) => r.json() as Promise<MemberAdminInfo[]>),
+        hubFetch("/admin/bans").then((r) => r.json() as Promise<BanInfo[]>),
+        hubFetch("/invites").then((r) => r.json() as Promise<InviteInfo[]>),
+        hubFetch("/admin/pending").then((r) => r.json() as Promise<PendingUser[]>),
+      ]);
+      if (members.status === "fulfilled") setHubAdminMembers(members.value);
+      if (bans.status === "fulfilled") setHubAdminBans(bans.value);
+      if (invites.status === "fulfilled") setHubAdminInvites(invites.value);
+      if (pending.status === "fulfilled") setHubAdminPending(pending.value);
+    } catch { /* ignore */ }
+  }
+
+  async function saveHubAdminSettings() {
+    try {
+      const { saveHubSettings } = await import("./platform/commands/hubAdmin");
+      await saveHubSettings({
+        name: hubAdminName,
+        description: hubAdminDescription,
+        icon: hubAdminIcon,
+        require_approval: hubAdminRequireApproval,
+        min_security_level: hubAdminMinLevel,
+        max_channel_depth: maxChannelDepth,
+      });
+    } catch { /* ignore */ }
+  }
+
+  async function handleChannelDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    const forbidden = descendantIds(channelTree, activeId);
+    if (forbidden.has(overId)) return;
+
+    const allFlat = flattenTree(channelTree);
+    const activeFlat = allFlat.find((n) => n.node.id === activeId);
+    const overFlat = allFlat.find((n) => n.node.id === overId);
+    if (!activeFlat || !overFlat) return;
+
+    if (maxChannelDepth > 0) {
+      const maxCodeDepth = maxChannelDepth - 1;
+      const parentForDepth = overFlat.node.is_category ? overFlat.node.id : overFlat.parentId;
+      const newDepth = parentForDepth !== null
+        ? computeDepth(channels, parentForDepth) + 1
+        : 0;
+      if (newDepth > maxCodeDepth) return;
+      if (activeFlat.node.is_category && newDepth >= maxCodeDepth) return;
+    }
+
+    const newParentId = overFlat.node.is_category ? overFlat.node.id : overFlat.parentId;
+    const parentChanged = newParentId !== activeFlat.node.parent_id;
+
+    const channelsWithNewParent = parentChanged
+      ? channels.map((c) => (c.id === activeId ? { ...c, parent_id: newParentId } : c))
+      : channels;
+
+    const sorted = [...channelsWithNewParent].sort((a, b) => a.display_order - b.display_order);
+    const oldIndex = sorted.findIndex((c) => c.id === activeId);
+    const newIndex = sorted.findIndex((c) => c.id === overId);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(sorted, oldIndex, newIndex);
+    setChannels(reordered.map((c, i) => ({ ...c, display_order: i })));
+
+    try {
+      const { moveChannel, reorderChannels } = await import("./platform/commands/hubAdmin");
+      if (parentChanged) {
+        await moveChannel(activeId, newParentId);
+      }
+      await reorderChannels(reordered.map((c) => c.id));
+    } catch { /* optimistic — ignore network errors */ }
+  }
+
   async function handleSend() {
     if (!selectedChannel || !inputText.trim()) return;
     const text = inputText.trim();
@@ -892,8 +999,8 @@ export default function App() {
         }
         onClearHubUnread={clearHubUnread}
         onRemoveHub={handleRemoveHub}
-        onOpenHubAdmin={() => {}}
-        onOpenHubAdminInvites={() => {}}
+        onOpenHubAdmin={() => void openHubAdmin()}
+        onOpenHubAdminInvites={() => { void openHubAdmin(); setHubAdminTab("invites"); }}
         onOpenCreateChannel={() => {}}
         onSelectChannel={handleSelectChannel}
         onChannelContextMenu={() => {}}
@@ -905,7 +1012,7 @@ export default function App() {
         onToggleSelfMute={() => {}}
         onToggleSelfDeafen={() => {}}
         onOpenSettings={() => {}}
-        onDragEnd={() => {}}
+        onDragEnd={handleChannelDragEnd}
         sharing={false}
         onScreenShare={() => {}}
       />
@@ -985,6 +1092,52 @@ export default function App() {
         screenShareViewerRef={screenShareViewerRef}
         assertiveAnnouncement={assertiveAnnouncement}
       />
+
+      {showHubAdmin && activeHubId && (
+        <div className="modal-overlay" style={{ display: "flex", alignItems: "stretch", justifyContent: "stretch" }}>
+          <HubAdminPage
+            tab={hubAdminTab}
+            onTab={setHubAdminTab}
+            onClose={() => setShowHubAdmin(false)}
+            hubName={hubAdminName}
+            onHubNameChange={setHubAdminName}
+            hubDescription={hubAdminDescription}
+            onHubDescriptionChange={setHubAdminDescription}
+            hubIcon={hubAdminIcon}
+            onHubIconChange={setHubAdminIcon}
+            requireApproval={hubAdminRequireApproval}
+            onRequireApprovalChange={setHubAdminRequireApproval}
+            minSecurityLevel={hubAdminMinLevel}
+            onMinSecurityLevelChange={setHubAdminMinLevel}
+            maxChannelDepth={maxChannelDepth}
+            onMaxChannelDepthChange={setMaxChannelDepth}
+            onSave={saveHubAdminSettings}
+            pendingMembers={hubAdminPending}
+            onApproveMember={(pk) => hubFetch(`/admin/members/${pk}/approve`, { method: "POST", body: "{}" }).catch(() => {})}
+            roles={meInfo?.roles ?? []}
+            members={hubAdminMembers}
+            onKickMember={(pk) => hubFetch(`/admin/members/${pk}`, { method: "DELETE" }).catch(() => {})}
+            onBanMember={(pk) => hubFetch(`/admin/bans`, { method: "POST", body: JSON.stringify({ target_public_key: pk }) }).catch(() => {})}
+            bans={hubAdminBans}
+            onUnban={(pk) => hubFetch(`/admin/bans/${pk}`, { method: "DELETE" }).catch(() => {})}
+            invites={hubAdminInvites}
+            activeHubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
+            myPubkey={publicKey ?? ""}
+            isAdmin={isAdmin}
+            onCreateInvite={(maxUses, expiresIn) =>
+              hubFetch("/invites", { method: "POST", body: JSON.stringify({ max_uses: maxUses, expires_in: expiresIn }) })
+                .then((r) => r.json() as Promise<InviteInfo>)
+                .then((inv) => setHubAdminInvites((prev) => [...prev, inv]))
+                .catch(() => {})
+            }
+            onRevokeInvite={(code) => {
+              hubFetch(`/invites/${code}`, { method: "DELETE" }).catch(() => {});
+              setHubAdminInvites((prev) => prev.filter((i) => i.code !== code));
+            }}
+            channels={channels}
+          />
+        </div>
+      )}
 
       {showAddHub && (
         <AddHubModal
