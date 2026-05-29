@@ -1,0 +1,160 @@
+import { useState, useEffect } from "react";
+import type { RecoveryRotationRequest } from "../types";
+import { formatPubkey } from "../utils/format";
+import {
+  getRecoveryContacts,
+  setRecoveryContacts,
+  clearRecoveryContacts,
+  listAdminRecoveryRequests,
+  decideRecoveryRequest,
+} from "../platform/commands/hubAdmin";
+
+interface Props {
+  hubUrl: string;
+  isAdmin: boolean;
+  publicKey: string | null;
+}
+
+export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _publicKey }: Props) {
+  const [threshold, setThreshold] = useState(2);
+  const [contactsText, setContactsText] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | string>("idle");
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [requests, setRequests] = useState<RecoveryRotationRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+
+  useEffect(() => {
+    void loadContacts();
+    if (isAdmin) void loadRequests();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  async function loadContacts() {
+    try {
+      const s = await getRecoveryContacts();
+      setThreshold(s.threshold);
+      setContactsText(s.contacts.map((c) => c.contact_pubkey).join("\n"));
+    } catch { /* first load — ignore */ }
+  }
+
+  async function loadRequests() {
+    setLoadingRequests(true);
+    try {
+      const reqs = await listAdminRecoveryRequests();
+      setRequests(reqs);
+    } catch (e) {
+      setLoadError(String(e));
+    } finally {
+      setLoadingRequests(false);
+    }
+  }
+
+  async function handleSave() {
+    const keys = contactsText.split(/[\n,]/).map((k) => k.trim()).filter(Boolean);
+    setSaveStatus("saving");
+    try {
+      await setRecoveryContacts(threshold, keys);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (e) {
+      setSaveStatus(String(e));
+    }
+  }
+
+  async function handleClear() {
+    if (!confirm("Clear all recovery contacts for this hub?")) return;
+    try {
+      await clearRecoveryContacts();
+      setContactsText("");
+      setThreshold(2);
+    } catch (e) {
+      setSaveStatus(String(e));
+    }
+  }
+
+  async function handleDecide(requestId: string, decision: "approve" | "reject") {
+    try {
+      await decideRecoveryRequest(requestId, decision);
+      await loadRequests();
+    } catch (e) {
+      setLoadError(String(e));
+    }
+  }
+
+  return (
+    <div>
+      <div className="settings-section">
+        <label className="settings-label">Recovery contacts for this hub</label>
+        <p className="muted">
+          If you lose your key, these contacts can vouch to this hub's admins that a new
+          key is you. They can't take over your account — an admin still decides.
+          Set this up before you need it.
+        </p>
+        <label className="settings-label">Contact pubkeys (one per line or comma-separated)</label>
+        <textarea
+          rows={4}
+          value={contactsText}
+          onChange={(e) => setContactsText(e.target.value)}
+          placeholder="Enter master pubkeys of trusted contacts…"
+          style={{ width: "100%", fontFamily: "monospace" }}
+        />
+        <div className="settings-row" style={{ marginTop: 8 }}>
+          <label className="settings-label">Threshold (K-of-N needed)</label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={threshold}
+            onChange={(e) => setThreshold(Number(e.target.value))}
+            style={{ width: 60 }}
+          />
+        </div>
+        {saveStatus === "saved" && <p className="muted">Saved.</p>}
+        {saveStatus !== "idle" && saveStatus !== "saving" && saveStatus !== "saved" && (
+          <p className="error-text">{saveStatus}</p>
+        )}
+        <div className="settings-row">
+          <button onClick={handleSave} disabled={saveStatus === "saving"}>
+            {saveStatus === "saving" ? "Saving…" : "Save contacts"}
+          </button>
+          <button className="btn-secondary danger" onClick={handleClear}>Clear</button>
+        </div>
+      </div>
+
+      {isAdmin && (
+        <div className="settings-section">
+          <label className="settings-label">Recovery requests queue</label>
+          <p className="muted">
+            Requests that have gathered enough contact attestations and await your decision.
+          </p>
+          {loadingRequests && <p className="muted">Loading…</p>}
+          {loadError && <p className="error-text">{loadError}</p>}
+          {requests.length === 0 && !loadingRequests && <p className="muted">No pending requests.</p>}
+          {requests.map((req) => (
+            <div key={req.id} className="settings-section" style={{ borderLeft: "2px solid var(--border)", paddingLeft: 12 }}>
+              <div className="settings-row">
+                <div>
+                  <div><strong>Old key:</strong> <code>{formatPubkey(req.old_pubkey)}</code></div>
+                  <div><strong>New key:</strong> <code>{formatPubkey(req.new_pubkey)}</code></div>
+                  {req.reason && <div className="muted">{req.reason}</div>}
+                  <div className="muted">
+                    Attestations: {req.attestation_count}/{req.threshold} · Status: {req.status}
+                  </div>
+                </div>
+              </div>
+              {req.status === "ready_for_review" && (
+                <div className="settings-row" style={{ marginTop: 8 }}>
+                  <button onClick={() => handleDecide(req.id, "approve")}>Approve transfer</button>
+                  <button className="btn-secondary danger" onClick={() => handleDecide(req.id, "reject")}>
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
