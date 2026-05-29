@@ -10,6 +10,7 @@ export interface Channel {
   created_by: string;
   parent_id: string | null;
   is_category: boolean;
+  channel_type?: "text" | "forum";
   display_order: number;
   description: string | null;
   icon: string | null;
@@ -616,4 +617,247 @@ export interface WebhookInfo {
 export interface WebhookCreatedResult {
   id: string;
   webhook_url: string;
+}
+
+// ---- Forum ----
+
+export interface PostSummary {
+  id: string;
+  channel_id: string;
+  author_pubkey: string;
+  title: string | null;
+  created_at: number;
+  edited_at: number | null;
+  is_pinned: boolean;
+  is_locked: boolean;
+  reply_count: number;
+  last_activity_at: number;
+  is_deleted: boolean;
+}
+
+export interface ReplyView {
+  id: string;
+  post_id: string;
+  author_pubkey: string;
+  body: string | null;
+  created_at: number;
+  edited_at: number | null;
+  reply_to_id: string | null;
+  is_deleted: boolean;
+}
+
+export interface PostDetail extends PostSummary {
+  body: string | null;
+  replies: ReplyView[];
+  reply_cursor?: string;
+}
+
+export interface PostListResponse {
+  posts: PostSummary[];
+  cursor?: string;
+}
+
+// ---- Server Tags / Badges ----
+
+export interface HubSelfTagSettings {
+  self_tags: string[];
+  nsfw: boolean;
+}
+
+export interface HubBadge {
+  id: string;
+  issuer_pubkey: string;
+  issuer_url: string;
+  label: string;
+  issued_at: number;
+  expires_at: number | null;
+  signature: string;
+  accepted_at: number;
+}
+
+export interface PendingBadgeOffer {
+  id: string;
+  issuer_pubkey: string;
+  issuer_url: string;
+  label: string;
+  issued_at: number;
+  expires_at: number | null;
+  signature: string;
+  received_at: number;
+}
+
+// ---- Gaming (admin / sessions) ----
+
+export interface InstalledGameAdmin {
+  id: string;
+  name: string;
+  entry_url: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  author: string | null;
+  version: string | null;
+  installed_by: string;
+  installed_at: number;
+  permissions: string[];
+  channel_scope: string[];
+}
+
+export interface GameManifest {
+  name: string;
+  entry_url: string;
+  id?: string;
+  version?: string;
+  description?: string | null;
+  thumbnail_url?: string | null;
+  author?: string | null;
+  min_players?: number;
+  max_players?: number;
+}
+
+export interface GamePlayer {
+  pubkey: string;
+  display_name: string | null;
+  joined_at: number;
+  connected: boolean;
+}
+
+export type GameSessionStatus = "lobby" | "in_progress" | "ended" | "abandoned";
+
+export interface GameSession {
+  session_id: string;
+  game_id: string;
+  channel_id: string;
+  host_pubkey: string;
+  status: GameSessionStatus;
+  players: GamePlayer[];
+  max_players: number;
+  created_at: number;
+  last_event_at: number;
+}
+
+// ---- Hub Certifications ----
+
+export interface CertPayload {
+  subject_kind: "user";
+  issuer_pubkey: string;
+  issuer_url: string;
+  subject_pubkey: string;
+  member_since: number;
+  standing: "good" | "revoked";
+  pow_level: number | null;
+  issued_at: number;
+  expires_at: number;
+  capabilities: string[];
+}
+
+export interface HubCertification {
+  payload: CertPayload;
+  signature: string;
+}
+
+export interface CertIssuance {
+  subject_pubkey: string;
+  issued_at: number;
+  expires_at: number;
+  standing: "good" | "revoked";
+  pow_level: number | null;
+  signature: string;
+}
+
+export interface CertAdmissionSettings {
+  cert_auto_issue: boolean;
+  cert_min_age_days: number;
+  cert_validity_days: number;
+  cert_min_pow_level: number | null;
+  cert_mode: "off" | "any" | "all";
+  cert_trusted_issuers: { pubkey: string; url: string; label: string }[];
+  cert_require: { min_pow_level?: number; min_member_since_days?: number } | null;
+}
+
+// ---- Identity Recovery ----
+
+export interface RecoveryContact {
+  contact_pubkey: string;
+  created_at: number;
+}
+
+export interface RecoverySettings {
+  threshold: number;
+  contacts: RecoveryContact[];
+}
+
+export interface RecoveryRotationRequest {
+  id: string;
+  old_pubkey: string;
+  new_pubkey: string;
+  status: "gathering" | "ready_for_review" | "approved" | "rejected" | "expired";
+  reason: string | null;
+  created_at: number;
+  decided_at: number | null;
+  decided_by: string | null;
+  attestation_count: number;
+  threshold: number;
+}
+
+// ---- Block / Ignore / DND ----
+
+export interface BlockEntry {
+  pubkey: string;
+  since: number;
+}
+
+export interface IgnoreEntry {
+  pubkey: string;
+  since: number;
+}
+
+export interface DndSchedule {
+  start: string;
+  end: string;
+  tz: string;
+}
+
+export interface DndSettings {
+  enabled: boolean;
+  schedule: DndSchedule | null;
+}
+
+// ---- WebRTC Screen Share v2 ----
+
+export interface WsScreenShareOffer {
+  type: "screen_share_offer_in";
+  channel_id: string;
+  stream_id: string;
+  from_pubkey: string;
+  sdp: string;
+}
+
+export interface WsScreenShareAnswer {
+  type: "screen_share_answer_in";
+  channel_id: string;
+  stream_id: string;
+  from_pubkey: string;
+  sdp: string;
+}
+
+export interface WsScreenShareIce {
+  type: "screen_share_ice_in";
+  channel_id: string;
+  stream_id: string;
+  from_pubkey: string;
+  candidate: string;
+}
+
+export interface WsScreenShareViewerJoined {
+  type: "screen_share_viewer_joined";
+  channel_id: string;
+  stream_id: string;
+  from_pubkey: string;
+}
+
+export interface WsScreenShareViewerLeft {
+  type: "screen_share_viewer_left";
+  channel_id: string;
+  stream_id: string;
+  from_pubkey: string;
 }
