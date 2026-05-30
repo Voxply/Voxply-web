@@ -1,23 +1,32 @@
 name: Build check
+
 on:
   push:
     branches: [main]
   pull_request:
+
 jobs:
   check:
+    name: typecheck + build
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
         with:
-          path: web
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          node-version: 22
           cache: npm
-          cache-dependency-path: web/web/package-lock.json
+          cache-dependency-path: web/package-lock.json
+
       - name: Install deps
-        working-directory: web/web
+        working-directory: web
         run: npm ci
+
       - name: TypeScript check
-        working-directory: web/web
-        run: npx tsc --noEmit
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: web
+        run: npm run build
