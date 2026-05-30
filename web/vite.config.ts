@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      // Force Rollup to resolve these from the project's own node_modules,
+      // not from ../i18n/ where they don't exist.
+      "i18next": resolve(__dirname, "node_modules/i18next"),
+      "react-i18next": resolve(__dirname, "node_modules/react-i18next"),
+      "i18next-icu": resolve(__dirname, "node_modules/i18next-icu"),
       "@components": resolve(__dirname, "src/components"),
       "@shared/types": resolve(__dirname, "src/types.ts"),
       "@shared/utils": resolve(__dirname, "src/utils"),
