@@ -6,11 +6,11 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@components": resolve(__dirname, "../voxply-desktop/src/components"),
-      "@shared/types": resolve(__dirname, "../voxply-desktop/src/types.ts"),
-      "@shared/utils": resolve(__dirname, "../voxply-desktop/src/utils"),
-      "@shared/hooks": resolve(__dirname, "../voxply-desktop/src/hooks"),
-      "@shared/constants": resolve(__dirname, "../voxply-desktop/src/constants.ts"),
+      "@components": resolve(__dirname, "src/components"),
+      "@shared/types": resolve(__dirname, "src/types.ts"),
+      "@shared/utils": resolve(__dirname, "src/utils"),
+      "@shared/hooks": resolve(__dirname, "src/hooks"),
+      "@shared/constants": resolve(__dirname, "src/constants.ts"),
       "@platform": resolve(__dirname, "src/platform/index.ts"),
       "@identity": resolve(__dirname, "src/identity"),
       "@voxply/i18n": resolve(__dirname, "../i18n/index.ts"),
