@@ -8,8 +8,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist",
+    "baseUrl": ".",
     "types": ["vite/client"],
     "paths": {
+      "i18next": ["./node_modules/i18next"],
+      "react-i18next": ["./node_modules/react-i18next"],
+      "i18next-icu": ["./node_modules/i18next-icu"],
       "@components/*": ["./src/components/*"],
       "@shared/types": ["./src/types"],
       "@shared/utils/*": ["./src/utils/*"],

@@ -4,9 +4,9 @@
   "private": true,
   "main": "index.ts",
   "types": "index.ts",
-  "dependencies": {
-    "i18next": "^24.2.3",
-    "i18next-icu": "^2.4.3",
-    "react-i18next": "^15.7.4"
+  "peerDependencies": {
+    "i18next": ">=23",
+    "i18next-icu": ">=2",
+    "react-i18next": ">=14"
   }
 }
