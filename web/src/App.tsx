@@ -37,6 +37,7 @@ import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@shared/utils/channels";
 import type { TreeNode } from "@shared/utils/channels";
 import type { ScreenShareViewerRef } from "@components/ScreenShareViewer";
+import { listBotCommands } from "@platform";
 import {
   restorePersistedHubs,
   addHub,
@@ -202,6 +203,7 @@ export default function App() {
   const [voicePartByChannel, setVoicePartByChannel] = useState<Record<string, VoiceParticipant[]>>({});
   const [voiceActiveUsers] = useState<Set<string>>(new Set());
   const [installedGames, setInstalledGames] = useState<InstalledGame[]>([]);
+  const [slashCommands, setSlashCommands] = useState<Array<{ command: string; description: string; bot_name: string }>>([]);
   const [userAlliances, setUserAlliances] = useState<AllianceInfo[]>([]);
   const [allianceChannels] = useState<Record<string, AllianceSharedChannel[]>>({});
 
@@ -479,13 +481,14 @@ export default function App() {
     if (loadingHub.current) return;
     loadingHub.current = true;
     try {
-      const [ch, usr, me, convs, games, alliances] = await Promise.allSettled([
+      const [ch, usr, me, convs, games, alliances, cmds] = await Promise.allSettled([
         hubFetch("/channels").then((r) => r.json() as Promise<Channel[]>),
         hubFetch("/users").then((r) => r.json() as Promise<User[]>),
         hubFetch("/me").then((r) => r.json() as Promise<MeInfo>),
         hubFetch("/conversations").then((r) => r.json() as Promise<Conversation[]>),
         hubFetch("/hub/games").then((r) => r.json() as Promise<InstalledGame[]>),
         hubFetch("/alliances").then((r) => r.json() as Promise<AllianceInfo[]>).catch(() => [] as AllianceInfo[]),
+        listBotCommands().catch(() => [] as Array<{ command: string; description: string; bot_name: string }>),
       ]);
       if (ch.status === "fulfilled") setChannels(ch.value);
       if (usr.status === "fulfilled") setUsers(usr.value);
@@ -493,6 +496,7 @@ export default function App() {
       if (convs.status === "fulfilled") setConversations(convs.value);
       if (games.status === "fulfilled") setInstalledGames(games.value);
       if (alliances.status === "fulfilled") setUserAlliances(alliances.value);
+      if (cmds.status === "fulfilled") setSlashCommands(cmds.value);
     } finally {
       loadingHub.current = false;
     }
@@ -1088,6 +1092,7 @@ export default function App() {
         onOpenImage={() => {}}
         onToast={() => {}}
         onError={() => {}}
+        slashCommands={slashCommands}
         activeScreenShares={[]}
         screenShareViewerRef={screenShareViewerRef}
         assertiveAnnouncement={assertiveAnnouncement}

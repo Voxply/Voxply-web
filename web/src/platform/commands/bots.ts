@@ -72,6 +72,25 @@ export async function adminDeleteWebhook(webhookId: string): Promise<void> {
   await hubFetch(`/admin/webhooks/${webhookId}`, { method: "DELETE" });
 }
 
+export interface BotCommandSummary {
+  name: string;
+  description: string;
+}
+
+export interface BotListEntry {
+  pubkey: string;
+  name: string;
+  commands: BotCommandSummary[];
+}
+
+export async function listBotCommands(): Promise<Array<{ command: string; description: string; bot_name: string }>> {
+  const res = await hubFetch("/bots");
+  const bots = (await res.json()) as BotListEntry[];
+  return bots.flatMap((b) =>
+    b.commands.map((c) => ({ command: c.name, description: c.description, bot_name: b.name }))
+  );
+}
+
 export function sendComponentInteraction(
   messageId: string,
   customId: string,
