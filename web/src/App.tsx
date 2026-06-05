@@ -32,6 +32,12 @@ import { FarmSettingsPage } from "@components/FarmSettingsPage";
 import { CreateHubWizard } from "@components/CreateHubWizard";
 import { KeyboardShortcuts } from "@components/KeyboardShortcuts";
 import { HubAdminPage } from "./components/HubAdminPage";
+import { SearchBar } from "@components/SearchBar";
+import { WelcomeScreenContainer } from "@components/WelcomeScreen";
+import { SettingsPage } from "@components/SettingsPage";
+import type { SettingsTab } from "@components/SettingsPage";
+import { UserContextMenu } from "@components/UserContextMenu";
+import { MobileShell } from "@components/MobileShell";
 import type { HubAdminTab } from "./components/HubAdminPage";
 import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@shared/utils/channels";
@@ -270,6 +276,22 @@ export default function App() {
   const [showCreateHub, setShowCreateHub] = useState(false);
   const [knownFarms, setKnownFarms] = useState<{ url: string; name: string }[]>([]);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  // === New web-only UI state ===
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => {
+    try { return localStorage.getItem("voxply.seenWelcome") !== "1"; } catch { return true; }
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
+  const [userContextMenu, setUserContextMenu] = useState<{
+    pubkey: string;
+    displayName: string | null;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [mentionPingEnabled, setMentionPingEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem("voxply.mentionPing") !== "0"; } catch { return true; }
+  });
 
   // === Refs ===
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -828,6 +850,12 @@ export default function App() {
       }
       if (mod && e.key === ",") {
         e.preventDefault();
+        setShowSettings((v) => !v);
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowSearchBar((v) => !v);
         return;
       }
       if (mod && e.key.toLowerCase() === "f") {
@@ -918,6 +946,82 @@ export default function App() {
         <KeyboardShortcuts onClose={() => setShowKeyboardShortcuts(false)} />
       )}
 
+      {showWelcome && hubs.length === 0 && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9000, background: "var(--bg, #1a1a2e)", overflow: "auto" }}>
+          <WelcomeScreenContainer
+            wsHandlers={stableHandlers}
+            onHubAdded={(hub) => {
+              setHubs(listHubs());
+              setActiveHubIdState(hub.hub_id);
+              setShowWelcome(false);
+              try { localStorage.setItem("voxply.seenWelcome", "1"); } catch {}
+              void loadHubData();
+            }}
+            onDismiss={() => {
+              setShowWelcome(false);
+              try { localStorage.setItem("voxply.seenWelcome", "1"); } catch {}
+            }}
+          />
+        </div>
+      )}
+
+      {showSearchBar && (
+        <SearchBar
+          hubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
+          activeChannelId={selectedChannel?.id}
+          onClose={() => setShowSearchBar(false)}
+          onNavigate={(channelId, _messageId) => {
+            const ch = channels.find((c) => c.id === channelId);
+            if (ch) void handleSelectChannel(ch);
+            setShowSearchBar(false);
+          }}
+        />
+      )}
+
+      {showSettings && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9000, background: "var(--bg, #1a1a2e)", overflow: "auto", display: "flex" }}>
+          <SettingsPage
+            tab={settingsTab}
+            onTab={setSettingsTab}
+            onClose={() => setShowSettings(false)}
+            hubs={hubs}
+            publicKey={publicKey}
+            copiedKey={copiedKey}
+            onCopyKey={() => {
+              if (!publicKey) return;
+              navigator.clipboard.writeText(publicKey).catch(() => {});
+              setCopiedKey(true);
+              setTimeout(() => setCopiedKey(false), 2000);
+            }}
+            theme={theme}
+            onThemeChange={setTheme}
+            profiles={namedProfiles}
+            defaultProfileId={defaultProfileId}
+            mentionPingEnabled={mentionPingEnabled}
+            onMentionPingChange={(v) => {
+              setMentionPingEnabled(v);
+              try { localStorage.setItem("voxply.mentionPing", v ? "1" : "0"); } catch {}
+            }}
+            recoveryPhrase={recoveryPhrase}
+            onShowRecovery={() => {
+              import("@identity/index").then(({ loadIdentity, seedToPhrase }) =>
+                loadIdentity().then((rec) => { if (rec) setRecoveryPhrase(seedToPhrase(rec.seed_hex)); })
+              );
+            }}
+          />
+        </div>
+      )}
+
+      {userContextMenu && (
+        <UserContextMenu
+          pubkey={userContextMenu.pubkey}
+          displayName={userContextMenu.displayName}
+          isAdmin={isAdmin}
+          position={userContextMenu.position}
+          onClose={() => setUserContextMenu(null)}
+        />
+      )}
+
       {showFarmSettings && (
         <FarmSettingsPage
           farmUrl={farmAdminUrl}
@@ -943,6 +1047,12 @@ export default function App() {
         />
       )}
 
+      <MobileShell
+        showHubSidebar
+        showChannelSidebar
+        showContent
+        onBack={() => {}}
+      >
       <HubSidebar
         hubs={hubs}
         activeHubId={activeHubId}
@@ -1015,7 +1125,7 @@ export default function App() {
         onOpenFriends={() => {}}
         onToggleSelfMute={() => {}}
         onToggleSelfDeafen={() => {}}
-        onOpenSettings={() => {}}
+        onOpenSettings={() => setShowSettings(true)}
         onDragEnd={handleChannelDragEnd}
         sharing={false}
         onScreenShare={() => {}}
@@ -1097,6 +1207,7 @@ export default function App() {
         screenShareViewerRef={screenShareViewerRef}
         assertiveAnnouncement={assertiveAnnouncement}
       />
+      </MobileShell>
 
       {showHubAdmin && activeHubId && (
         <div className="modal-overlay" style={{ display: "flex", alignItems: "stretch", justifyContent: "stretch" }}>
