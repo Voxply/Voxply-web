@@ -5,6 +5,8 @@ export interface WsHandlers {
   onVoiceState?: (e: object) => void;
   onScreenShare?: (e: object) => void;
   onStatusChange?: (connected: boolean) => void;
+  onPin?: (e: object) => void;
+  onPoll?: (e: object) => void;
 }
 
 const BACKOFF_INITIAL = 1000;
@@ -76,6 +78,10 @@ export class HubWebSocket {
       type === "screen_share_stopped"
     ) {
       this.handlers.onScreenShare?.(msg);
+    } else if (type === "message_pinned" || type === "message_unpinned") {
+      this.handlers.onPin?.(msg);
+    } else if (type === "poll_created" || type === "poll_updated" || type === "poll_deleted") {
+      this.handlers.onPoll?.(msg);
     }
   }
 

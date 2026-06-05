@@ -39,6 +39,9 @@ import { UserListGrouped } from "./UserListGrouped";
 import { MessageEmbeds } from "./MessageEmbeds";
 import { MessageComponents } from "./MessageComponents";
 import { BotCard } from "./BotCard";
+import { PinnedMessagesModal } from "./PinnedMessagesModal";
+import { UserProfileCard } from "./UserProfileCard";
+import { pinMessage, unpinMessage } from "@platform";
 
 interface SelectedAllianceChannel {
   alliance_id: string;
@@ -135,6 +138,9 @@ interface Props {
   shareKbps?: number;
   onStopShare?: () => void;
   assertiveAnnouncement?: string;
+  pinnedMessageIds?: Set<string>;
+  onPinToggle?: (messageId: string, isPinned: boolean) => void;
+  onOpenUserProfile?: (pubkey: string) => void;
 }
 
 export function ContentArea({
@@ -163,6 +169,9 @@ export function ContentArea({
   activeScreenShares, screenShareViewerRef,
   sharing, shareKbps, onStopShare,
   assertiveAnnouncement = "",
+  pinnedMessageIds = new Set<string>(),
+  onPinToggle,
+  onOpenUserProfile,
 }: Props) {
   const { t } = useTranslation();
   const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandEntry[]>([]);
@@ -176,6 +185,8 @@ export function ContentArea({
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const announceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingAnnouncementsRef = useRef<string[]>([]);
+  const [showPinsModal, setShowPinsModal] = useState(false);
+  const [profileCardPubkey, setProfileCardPubkey] = useState<string | null>(null);
 
   useEffect(() => {
     if (document.hidden) return;
@@ -269,6 +280,29 @@ export function ContentArea({
 
   function handleComponentInteract(_messageId: string, _customId: string, _values: string[]) {
     // Actual WS send is handled inside MessageComponents via platform session.
+  }
+
+  async function handlePinToggle(messageId: string) {
+    if (!selectedChannel) return;
+    const isPinned = pinnedMessageIds.has(messageId);
+    try {
+      if (isPinned) {
+        await unpinMessage(selectedChannel.id, messageId);
+      } else {
+        await pinMessage(selectedChannel.id, messageId);
+      }
+      onPinToggle?.(messageId, !isPinned);
+    } catch {
+      // pin failed silently
+    }
+  }
+
+  function handleAuthorClick(pubkey: string) {
+    if (onOpenUserProfile) {
+      onOpenUserProfile(pubkey);
+    } else {
+      setProfileCardPubkey(pubkey);
+    }
   }
 
   return (
@@ -464,6 +498,13 @@ export function ContentArea({
                 </button>
               )}
               <button
+                onClick={() => setShowPinsModal(true)}
+                className="btn-icon-header"
+                title="Pinned messages"
+              >
+                📌
+              </button>
+              <button
                 onClick={() => searchOpen ? onCloseSearch() : onSetSearchOpen(true)}
                 className="btn-icon-header"
                 title={t("content.search.title")}
@@ -627,8 +668,8 @@ export function ContentArea({
                         </span>
                         <span
                           className="message-sender"
-                          style={{ color: colorForKey(m.sender), cursor: senderUser?.is_bot ? "pointer" : undefined }}
-                          onClick={senderUser?.is_bot && !senderUser?.is_webhook ? (e) => openBotCard(m.sender, e) : undefined}
+                          style={{ color: colorForKey(m.sender), cursor: "pointer" }}
+                          onClick={senderUser?.is_bot && !senderUser?.is_webhook ? (e) => openBotCard(m.sender, e) : () => handleAuthorClick(m.sender)}
                         >
                           {senderLabel}
                         </span>
@@ -695,6 +736,16 @@ export function ContentArea({
                               >
                                 🔗
                               </button>
+                              {isAdmin && (
+                                <button
+                                  className="message-action"
+                                  onClick={() => handlePinToggle(m.id)}
+                                  title={pinnedMessageIds.has(m.id) ? "Unpin message" : "Pin message"}
+                                  aria-label={pinnedMessageIds.has(m.id) ? "Unpin message" : "Pin message"}
+                                >
+                                  📌
+                                </button>
+                              )}
                               {isMine && (
                                 <button className="message-action" onClick={() => onStartEdit(m)} title={t("message.action.edit")} aria-label={t("message.action.edit")}>
                                   ✎
@@ -920,6 +971,22 @@ export function ContentArea({
           displayName={myDisplayName}
           avatar={myAvatar ?? null}
           onClose={() => setActiveGame(null)}
+        />
+      )}
+
+      {showPinsModal && selectedChannel && (
+        <PinnedMessagesModal
+          channelId={selectedChannel.id}
+          channelName={selectedChannel.name}
+          onClose={() => setShowPinsModal(false)}
+          onScrollToMessage={onScrollToMessage}
+        />
+      )}
+
+      {profileCardPubkey && (
+        <UserProfileCard
+          pubkey={profileCardPubkey}
+          onClose={() => setProfileCardPubkey(null)}
         />
       )}
     </>

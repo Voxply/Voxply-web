@@ -121,3 +121,21 @@ export {
   forumPinPost,
   forumLockPost,
 } from "./commands/forum";
+
+export { uploadFile } from "./commands/uploads";
+
+export { pinMessage, unpinMessage, getPins } from "./commands/pins";
+
+export { getUserProfile } from "./commands/profiles";
+
+export { createPoll, getPolls, votePoll, deletePoll } from "./commands/polls";
+
+export {
+  getEvents,
+  createEvent,
+  rsvpEvent,
+  cancelRsvp,
+  deleteEvent,
+} from "./commands/events";
+
+export { getNotifPref, setNotifPref } from "./notifPrefs";

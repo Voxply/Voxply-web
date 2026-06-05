@@ -33,6 +33,73 @@ export interface Attachment {
   data_b64: string;
 }
 
+export interface RemoteAttachment {
+  url: string;
+  filename: string;
+  size_bytes: number;
+  mime_type: string;
+}
+
+export interface PinnedMessage {
+  id: string;
+  channel_id: string;
+  sender: string;
+  sender_name: string | null;
+  content: string;
+  created_at: number;
+  pinned_at: number;
+  pinned_by: string;
+}
+
+export interface UserProfile {
+  pubkey: string;
+  display_name: string | null;
+  avatar: string | null;
+  joined_at: number;
+  roles: RoleInfo[];
+  badges: string[];
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  vote_count: number;
+  voted: boolean;
+}
+
+export interface Poll {
+  id: string;
+  channel_id: string;
+  question: string;
+  options: PollOption[];
+  total_votes: number;
+  created_by: string;
+  created_at: number;
+  ends_at: number | null;
+  is_deleted: boolean;
+}
+
+export type RsvpStatus = "going" | "maybe" | "not_going";
+
+export interface EventRsvp {
+  pubkey: string;
+  status: RsvpStatus;
+}
+
+export interface HubEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_at: number;
+  end_at: number | null;
+  created_by: string;
+  created_at: number;
+  rsvps: EventRsvp[];
+}
+
+export type NotifLevel = "all" | "mentions" | "none";
+
 export interface Reaction {
   emoji: string;
   count: number;

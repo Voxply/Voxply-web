@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import type { Hub, NamedProfile } from "@shared/types";
-import { hubFetch } from "@platform";
+import type { Hub, NamedProfile, NotifLevel } from "@shared/types";
+import { hubFetch, getNotifPref, setNotifPref } from "@platform";
 import { loadIdentity, seedToPhrase } from "@identity/index";
 
 export type SettingsTab = "profile" | "notifications" | "appearance" | "account";
@@ -37,10 +37,23 @@ const THEMES: { value: "calm" | "classic" | "linear" | "light"; label: string }[
   { value: "light", label: "Light" },
 ];
 
+const NOTIF_LEVELS: { value: NotifLevel; label: string }[] = [
+  { value: "all", label: "All messages" },
+  { value: "mentions", label: "Mentions only" },
+  { value: "none", label: "None" },
+];
+
 export function SettingsPage(props: SettingsPageProps) {
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | string>("idle");
+  const [hubNotifPrefs, setHubNotifPrefs] = useState<Record<string, NotifLevel>>(() => {
+    const prefs: Record<string, NotifLevel> = {};
+    for (const hub of props.hubs) {
+      prefs[hub.hub_url] = getNotifPref(hub.hub_url);
+    }
+    return prefs;
+  });
 
   async function handleSaveProfile() {
     setSaveStatus("saving");
@@ -157,7 +170,7 @@ export function SettingsPage(props: SettingsPageProps) {
                 Enable mention ping sound
               </label>
             </div>
-            <div className="settings-section">
+            <div className="settings-section" style={{ marginBottom: 20 }}>
               <label className="settings-label">Desktop notifications</label>
               <p className="muted" style={{ fontSize: "var(--text-sm)", marginBottom: 8 }}>
                 Allow the browser to show notifications for new messages.
@@ -178,6 +191,38 @@ export function SettingsPage(props: SettingsPageProps) {
                 </p>
               )}
             </div>
+            {props.hubs.length > 0 && (
+              <div className="settings-section">
+                <label className="settings-label">Per-hub notification level</label>
+                <p className="muted" style={{ fontSize: "var(--text-sm)", marginBottom: 12 }}>
+                  Control which messages trigger browser notifications for each hub.
+                </p>
+                {props.hubs.map((hub) => (
+                  <div
+                    key={hub.hub_id}
+                    className="settings-row"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}
+                  >
+                    <span style={{ fontSize: "var(--text-sm)", fontWeight: 500 }}>{hub.hub_name}</span>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {NOTIF_LEVELS.map((level) => (
+                        <button
+                          key={level.value}
+                          className={hubNotifPrefs[hub.hub_url] === level.value ? "btn-primary" : "btn-secondary"}
+                          style={{ fontSize: "var(--text-xs)", padding: "3px 8px" }}
+                          onClick={() => {
+                            setNotifPref(hub.hub_url, level.value);
+                            setHubNotifPrefs((prev) => ({ ...prev, [hub.hub_url]: level.value }));
+                          }}
+                        >
+                          {level.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
