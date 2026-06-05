@@ -325,6 +325,7 @@
   "dm.group_banner": "Gruppen-DMs sind nicht Ende-zu-Ende-verschlüsselt. Der Hub-Betreiber kann diese Nachrichten lesen.",
   "dm.group_banner_detail": "Verwende Gruppen-DMs nur mit Personen, denen du auf diesem Hub vertraust.",
   "dm.group_banner_got_it": "Ich verstehe",
+  "dm.group_e2e_active": "Ende-zu-Ende verschlüsselter Gruppen-DM",
   "dm.delivery_failed": "⚠ Delivery failed",
   "dm.encrypted": "End-to-end encrypted",
   "message.actions.aria": "Message actions",

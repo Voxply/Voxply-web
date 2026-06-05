@@ -325,6 +325,7 @@
   "dm.group_banner": "Group DMs are not end-to-end encrypted. The hub operator can read these messages.",
   "dm.group_banner_detail": "Only use group DMs with people you trust on this hub.",
   "dm.group_banner_got_it": "I understand",
+  "dm.group_e2e_active": "End-to-end encrypted group DM",
   "dm.delivery_failed": "⚠ Delivery failed",
   "dm.encrypted": "End-to-end encrypted",
   "message.actions.aria": "Message actions",

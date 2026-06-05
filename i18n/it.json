@@ -325,6 +325,7 @@
   "dm.group_banner": "I DM di gruppo non sono crittografati end-to-end. L'operatore dell'hub può leggere questi messaggi.",
   "dm.group_banner_detail": "Usa i DM di gruppo solo con persone di cui ti fidi su questo hub.",
   "dm.group_banner_got_it": "Ho capito",
+  "dm.group_e2e_active": "DM di gruppo crittografato end-to-end",
   "dm.delivery_failed": "⚠ Consegna fallita",
   "dm.encrypted": "Crittografato end-to-end",
   "message.actions.aria": "Azioni messaggio",
