@@ -1,4 +1,5 @@
 import { hubFetch } from "../http";
+import { activeSession } from "../session";
 import type { Message, Attachment } from "@shared/types";
 
 export async function getMessages(
@@ -82,4 +83,28 @@ export async function subscribeChannel(channel_id: string): Promise<void> {
 
 export async function unsubscribeChannel(channel_id: string): Promise<void> {
   await hubFetch(`/channels/${channel_id}/unsubscribe`, { method: "POST" });
+}
+
+export interface UnreadCount {
+  channel_id: string;
+  unread_count: number;
+}
+
+export async function getUnreadCounts(): Promise<UnreadCount[]> {
+  const r = await hubFetch("/channels/unread");
+  return r.json() as Promise<UnreadCount[]>;
+}
+
+export async function markChannelRead(channel_id: string): Promise<void> {
+  await hubFetch(`/channels/${channel_id}/read`, { method: "POST" });
+}
+
+export function sendTypingEvent(channel_id: string): void {
+  const s = activeSession();
+  s.ws?.send({ type: "typing_start", channel_id });
+}
+
+export function sendDmTypingEvent(conversation_id: string): void {
+  const s = activeSession();
+  s.ws?.send({ type: "dm_typing", conversation_id });
 }

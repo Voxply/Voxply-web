@@ -65,6 +65,10 @@ import {
   deleteMessage,
   addReaction,
   removeReaction,
+  getUnreadCounts,
+  markChannelRead,
+  sendTypingEvent,
+  sendDmTypingEvent,
 } from "@platform";
 import {
   listConversations,
@@ -233,13 +237,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
   const [firstNotifyingMessageId, setFirstNotifyingMessageId] = useState<string | null>(null);
-  const [typingByKey] = useState<Record<string, { name: string; ts: number }>>({});
+  const [typingByKey, setTypingByKey] = useState<Record<string, { name: string; ts: number }>>({});
   const [allianceMessages] = useState<Message[]>([]);
 
   // === DMs ===
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [dmMessages, setDmMessages] = useState<Record<string, DmMessage[]>>({});
-  const [dmTypingByKey] = useState<Record<string, { name: string; ts: number }>>({});
+  const [dmTypingByKey, setDmTypingByKey] = useState<Record<string, { name: string; ts: number }>>({});
 
   // === Unread / notifications ===
   const [unreadByChannel, setUnreadByChannel] = useState<Record<string, Record<string, boolean>>>({});
@@ -294,6 +298,10 @@ export default function App() {
   });
 
   // === Refs ===
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dmTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dmTypingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesEndChannelRef = useRef<HTMLLIElement | null>(null);
   const messagesContainerRef = useRef<HTMLOListElement | null>(null);
@@ -375,6 +383,12 @@ export default function App() {
       } else if (type === "message_deleted") {
         const id = m.message_id as string;
         if (id) setMessages((prev) => prev.filter((x) => x.id !== id));
+      } else if (type === "reactions_updated") {
+        const msgId = m.message_id as string | undefined;
+        const reactions = m.reactions as Message["reactions"] | undefined;
+        if (msgId && reactions) {
+          setMessages((prev) => prev.map((x) => x.id === msgId ? { ...x, reactions } : x));
+        }
       }
     },
     onDm: (raw) => {
@@ -403,6 +417,45 @@ export default function App() {
       const m = raw as { channel_id?: string; participants?: VoiceParticipant[] };
       if (m.channel_id && m.participants) {
         setVoicePartByChannel((prev) => ({ ...prev, [m.channel_id!]: m.participants! }));
+      }
+    },
+    onTyping: (raw) => {
+      const m = raw as Record<string, unknown>;
+      const type = m.type as string;
+      const sender = m.sender as string | undefined;
+      const name = (m.sender_name as string | undefined) ?? (sender ? sender.slice(0, 8) : "Someone");
+      const now = Date.now();
+      if (type === "typing" || type === "typing_start") {
+        const channelId = m.channel_id as string | undefined;
+        if (!channelId) return;
+        const key = `${channelId}:${sender ?? ""}`;
+        setTypingByKey((prev) => ({ ...prev, [key]: { name, ts: now } }));
+        setTimeout(() => {
+          setTypingByKey((prev) => {
+            const entry = prev[key];
+            if (!entry || entry.ts !== now) return prev;
+            const { [key]: _, ...rest } = prev;
+            return rest;
+          });
+        }, 6000);
+      } else if (type === "typing_stop") {
+        const channelId = m.channel_id as string | undefined;
+        if (!channelId || !sender) return;
+        const key = `${channelId}:${sender}`;
+        setTypingByKey((prev) => { const { [key]: _, ...rest } = prev; return rest; });
+      } else if (type === "dm_typing") {
+        const convId = m.conversation_id as string | undefined;
+        if (!convId) return;
+        const key = `${convId}:${sender ?? ""}`;
+        setDmTypingByKey((prev) => ({ ...prev, [key]: { name, ts: now } }));
+        setTimeout(() => {
+          setDmTypingByKey((prev) => {
+            const entry = prev[key];
+            if (!entry || entry.ts !== now) return prev;
+            const { [key]: _, ...rest } = prev;
+            return rest;
+          });
+        }, 6000);
       }
     },
     onScreenShare: () => {},
@@ -519,6 +572,16 @@ export default function App() {
       if (games.status === "fulfilled") setInstalledGames(games.value);
       if (alliances.status === "fulfilled") setUserAlliances(alliances.value);
       if (cmds.status === "fulfilled") setSlashCommands(cmds.value);
+      const hubId = getActiveHubId();
+      if (hubId) {
+        getUnreadCounts().then((counts) => {
+          const map: Record<string, boolean> = {};
+          for (const c of counts) {
+            if (c.unread_count > 0) map[c.channel_id] = true;
+          }
+          setUnreadByChannel((prev) => ({ ...prev, [hubId]: map }));
+        }).catch(() => {});
+      }
     } finally {
       loadingHub.current = false;
     }
@@ -604,6 +667,7 @@ export default function App() {
     setReplyTarget(null);
     setEditingMessageId(null);
     if (activeHubId) clearUnread(activeHubId, ch.id);
+    markChannelRead(ch.id).catch(() => {});
     try {
       const msgs = await getMessages(ch.id);
       setMessages(msgs);
@@ -785,6 +849,42 @@ export default function App() {
     } catch {}
   }
 
+  // === Typing events ===
+
+  function handlePingTyping() {
+    if (!selectedChannel) return;
+    const chId = selectedChannel.id;
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    } else {
+      try { sendTypingEvent(chId); } catch {}
+    }
+    typingTimerRef.current = setTimeout(() => { typingTimerRef.current = null; }, 3000);
+    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+    typingStopTimerRef.current = setTimeout(() => {
+      typingStopTimerRef.current = null;
+      typingTimerRef.current = null;
+    }, 5000);
+  }
+
+  function handlePingDmTyping() {
+    if (!selectedConversation) return;
+    const convId = selectedConversation.id;
+    if (dmTypingTimerRef.current) {
+      clearTimeout(dmTypingTimerRef.current);
+      dmTypingTimerRef.current = null;
+    } else {
+      try { sendDmTypingEvent(convId); } catch {}
+    }
+    dmTypingTimerRef.current = setTimeout(() => { dmTypingTimerRef.current = null; }, 3000);
+    if (dmTypingStopTimerRef.current) clearTimeout(dmTypingStopTimerRef.current);
+    dmTypingStopTimerRef.current = setTimeout(() => {
+      dmTypingStopTimerRef.current = null;
+      dmTypingTimerRef.current = null;
+    }, 5000);
+  }
+
   // === Voice (not available in browser) ===
 
   function showVoiceNotAvailable() {
@@ -814,6 +914,26 @@ export default function App() {
     setPublicKey(publicKeyHex(hex));
     setRecoveryPhrase(null);
   }
+
+  const channelTypingByKey = useMemo(() => {
+    if (!selectedChannel) return {} as Record<string, { name: string; ts: number }>;
+    const prefix = `${selectedChannel.id}:`;
+    const out: Record<string, { name: string; ts: number }> = {};
+    for (const [k, v] of Object.entries(typingByKey)) {
+      if (k.startsWith(prefix)) out[k] = v;
+    }
+    return out;
+  }, [typingByKey, selectedChannel]);
+
+  const convTypingByKey = useMemo(() => {
+    if (!selectedConversation) return {} as Record<string, { name: string; ts: number }>;
+    const prefix = `${selectedConversation.id}:`;
+    const out: Record<string, { name: string; ts: number }> = {};
+    for (const [k, v] of Object.entries(dmTypingByKey)) {
+      if (k.startsWith(prefix)) out[k] = v;
+    }
+    return out;
+  }, [dmTypingByKey, selectedConversation]);
 
   const isAdmin = useMemo(
     () => meInfo?.roles?.some((r) => r.permissions?.includes("manage_hub")) ?? false,
@@ -1165,8 +1285,8 @@ export default function App() {
         installedGames={installedGames}
         myAvatar={meInfo?.avatar ?? null}
         inputText={inputText}
-        typingByKey={typingByKey}
-        dmTypingByKey={dmTypingByKey}
+        typingByKey={channelTypingByKey}
+        dmTypingByKey={convTypingByKey}
         messagesEndRef={messagesEndRef}
         messagesEndChannelRef={messagesEndChannelRef}
         messagesContainerRef={messagesContainerRef}
@@ -1181,8 +1301,8 @@ export default function App() {
         onSend={handleSend}
         onSendDm={handleSendDm}
         onSendAllianceMessage={() => {}}
-        onPingTyping={() => {}}
-        onPingDmTyping={() => {}}
+        onPingTyping={handlePingTyping}
+        onPingDmTyping={handlePingDmTyping}
         onSetPendingAttachments={setPendingAttachments}
         onAttachFiles={() => {}}
         onOpenEditDescription={() => {}}

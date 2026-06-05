@@ -38,7 +38,12 @@ export {
   searchMessages,
   subscribeChannel,
   unsubscribeChannel,
+  getUnreadCounts,
+  markChannelRead,
+  sendTypingEvent,
+  sendDmTypingEvent,
 } from "./commands/messages";
+export type { UnreadCount } from "./commands/messages";
 
 export { sendComponentInteraction, listBotCommands } from "./commands/bots";
 
