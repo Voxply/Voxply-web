@@ -433,7 +433,7 @@ export function ContentArea({
                     const actionText = meAction(m.content);
                     if (actionText !== null) {
                       return (
-                        <div key={i} className="message message-action">
+                        <div key={m.id ?? `${m.timestamp}-${m.sender}`} className="message message-action">
                           <span className="action-asterisk">*</span>
                           <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
                             {senderLabel}
@@ -450,7 +450,7 @@ export function ContentArea({
                       );
                     }
                     return (
-                      <div key={i} className="message">
+                      <div key={m.id ?? `${m.timestamp}-${m.sender}`} className="message">
                         <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
                           {senderLabel}
                         </span>
