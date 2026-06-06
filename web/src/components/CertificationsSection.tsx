@@ -98,8 +98,9 @@ export function CertificationsSection({ hubUrl: _hubUrl, members }: Props) {
               Automatically issue certs to eligible members
             </label>
             <div className="settings-row" style={{ marginTop: 8 }}>
-              <label className="settings-label">Min. membership age (days)</label>
+              <label className="settings-label" htmlFor="cert-min-age">Min. membership age (days)</label>
               <input
+                id="cert-min-age"
                 type="number"
                 min={0}
                 value={settings.cert_min_age_days}
@@ -108,8 +109,9 @@ export function CertificationsSection({ hubUrl: _hubUrl, members }: Props) {
               />
             </div>
             <div className="settings-row">
-              <label className="settings-label">Cert validity (days)</label>
+              <label className="settings-label" htmlFor="cert-validity">Cert validity (days)</label>
               <input
+                id="cert-validity"
                 type="number"
                 min={1}
                 value={settings.cert_validity_days}

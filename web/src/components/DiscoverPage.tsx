@@ -179,8 +179,8 @@ export function DiscoverPage({ onClose, onJoinHub, directoryUrl = DEFAULT_DIR }:
             )}
             {hub.badges && hub.badges.length > 0 && (
               <div className="discover-card-badges">
-                {hub.badges.map((b, i) => (
-                  <span key={i} className="discover-badge-attestation" title={`Issuer: ${b.payload.issuer_url}`}>
+                {hub.badges.map((b) => (
+                  <span key={`${b.payload.issuer_url}:${b.payload.label}`} className="discover-badge-attestation" title={`Issuer: ${b.payload.issuer_url}`}>
                     🏅 {b.payload.label}
                   </span>
                 ))}
