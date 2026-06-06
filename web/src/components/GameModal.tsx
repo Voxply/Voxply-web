@@ -148,10 +148,10 @@ export function GameModal({
   return (
     <div className="game-modal-overlay">
       <FocusTrap>
-        <div className="game-modal">
+        <div className="game-modal" role="dialog" aria-modal="true" aria-label={game.name}>
           <div className="game-modal-titlebar">
             <span className="game-modal-title">{game.name}</span>
-            <button className="game-modal-close" onClick={onClose} title="Close">×</button>
+            <button className="game-modal-close" onClick={onClose} title="Close" aria-label="Close">×</button>
           </div>
           {hasAnyGrant && !permsDismissed && (
             <div className="game-permissions-strip">
