@@ -91,8 +91,9 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
           key is you. They can't take over your account — an admin still decides.
           Set this up before you need it.
         </p>
-        <label className="settings-label">Contact pubkeys (one per line or comma-separated)</label>
+        <label className="settings-label" htmlFor="recovery-contacts">Contact pubkeys (one per line or comma-separated)</label>
         <textarea
+          id="recovery-contacts"
           rows={4}
           value={contactsText}
           onChange={(e) => setContactsText(e.target.value)}
@@ -100,8 +101,9 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
           style={{ width: "100%", fontFamily: "monospace" }}
         />
         <div className="settings-row" style={{ marginTop: 8 }}>
-          <label className="settings-label">Threshold (K-of-N needed)</label>
+          <label className="settings-label" htmlFor="recovery-threshold">Threshold (K-of-N needed)</label>
           <input
+            id="recovery-threshold"
             type="number"
             min={1}
             max={20}

@@ -141,12 +141,12 @@ export function HubAdminPage(props: HubAdminPageProps) {
           <section>
             <h1>Hub overview</h1>
             <div className="settings-section">
-              <label className="settings-label">Hub name</label>
-              <input type="text" value={props.hubName} onChange={(e) => props.onHubNameChange(e.target.value)} />
+              <label className="settings-label" htmlFor="admin-hub-name">Hub name</label>
+              <input id="admin-hub-name" type="text" value={props.hubName} onChange={(e) => props.onHubNameChange(e.target.value)} />
             </div>
             <div className="settings-section">
-              <label className="settings-label">Description</label>
-              <textarea rows={3} value={props.hubDescription} onChange={(e) => props.onHubDescriptionChange(e.target.value)} />
+              <label className="settings-label" htmlFor="admin-hub-desc">Description</label>
+              <textarea id="admin-hub-desc" rows={3} value={props.hubDescription} onChange={(e) => props.onHubDescriptionChange(e.target.value)} />
             </div>
             <div className="settings-section">
               <label className="settings-label">Membership</label>
@@ -156,13 +156,13 @@ export function HubAdminPage(props: HubAdminPageProps) {
               </label>
             </div>
             <div className="settings-section">
-              <label className="settings-label">Min. security level (anti-spam)</label>
-              <input type="number" min={0} max={9999} value={props.minSecurityLevel} onChange={(e) => props.onMinSecurityLevelChange(Number(e.target.value))} />
+              <label className="settings-label" htmlFor="admin-antispam">Min. security level (anti-spam)</label>
+              <input id="admin-antispam" type="number" min={0} max={9999} value={props.minSecurityLevel} onChange={(e) => props.onMinSecurityLevelChange(Number(e.target.value))} />
             </div>
             <div className="settings-section">
-              <label className="settings-label">Max channel depth</label>
+              <label className="settings-label" htmlFor="admin-max-depth">Max channel depth</label>
               <p className="muted">0 = unlimited. Limits how deeply channels can be nested.</p>
-              <input type="number" min={0} max={20} value={props.maxChannelDepth} onChange={(e) => props.onMaxChannelDepthChange(Number(e.target.value))} />
+              <input id="admin-max-depth" type="number" min={0} max={20} value={props.maxChannelDepth} onChange={(e) => props.onMaxChannelDepthChange(Number(e.target.value))} />
             </div>
             <div className="settings-section">
               <button onClick={props.onSave}>Save changes</button>

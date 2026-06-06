@@ -31,8 +31,9 @@ export function ForumComposer({ channelId, onCreated, onCancel }: Props) {
     <div className="forum-composer">
       <h2>New post</h2>
       <div className="settings-section">
-        <label className="settings-label">Title</label>
+        <label className="settings-label" htmlFor="forum-title">Title</label>
         <input
+          id="forum-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -42,8 +43,9 @@ export function ForumComposer({ channelId, onCreated, onCancel }: Props) {
         />
       </div>
       <div className="settings-section">
-        <label className="settings-label">Body</label>
+        <label className="settings-label" htmlFor="forum-body">Body</label>
         <textarea
+          id="forum-body"
           rows={8}
           value={body}
           onChange={(e) => setBody(e.target.value)}
