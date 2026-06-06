@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { PinnedMessage } from "../types";
 import { getPins } from "@platform";
 import { formatRelative } from "../utils/format";
+import { FocusTrap } from "./FocusTrap";
 
 interface Props {
   channelId: string;
@@ -22,6 +23,14 @@ export function PinnedMessagesModal({ channelId, channelName, onClose, onScrollT
       .finally(() => setLoading(false));
   }, [channelId]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       className="modal-overlay"
@@ -30,6 +39,7 @@ export function PinnedMessagesModal({ channelId, channelName, onClose, onScrollT
       aria-modal="true"
       aria-label="Pinned messages"
     >
+      <FocusTrap>
       <div
         className="modal-box"
         style={{ maxWidth: 520, maxHeight: "70vh", display: "flex", flexDirection: "column" }}
@@ -76,6 +86,7 @@ export function PinnedMessagesModal({ channelId, channelName, onClose, onScrollT
           ))}
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }
