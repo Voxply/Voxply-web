@@ -889,6 +889,16 @@ export interface DndSettings {
   schedule: DndSchedule | null;
 }
 
+// ---- Link Preview ----
+
+export interface LinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  domain: string;
+}
+
 // ---- WebRTC Screen Share v2 ----
 
 export interface WsScreenShareOffer {

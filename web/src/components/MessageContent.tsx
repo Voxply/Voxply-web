@@ -1,43 +1,26 @@
-import React from "react";
+import { useMemo } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 
-/**
- * Pipeline-style markdown renderer. Each pass walks the current array of
- * (string | ReactNode) parts and replaces any matches in the *string*
- * parts with the rendered React node. Because we never feed user input
- * into innerHTML, this is XSS-safe by construction — React escapes text
- * children automatically.
- *
- * Order matters: code blocks first (their content shouldn't be parsed
- * for any other rules), then inline code, then bold, italic, mentions,
- * URLs.
- */
-type Part = string | React.ReactNode;
+const ALLOWED_TAGS = ["b", "i", "em", "strong", "code", "pre", "a", "blockquote", "ul", "ol", "li", "p", "br"];
+const ALLOWED_ATTR = ["href", "target", "rel"];
 
-function splitOnPattern(
-  parts: Part[],
-  re: RegExp,
-  render: (match: RegExpExecArray, key: string) => React.ReactNode,
-): Part[] {
-  const out: Part[] = [];
-  parts.forEach((p, i) => {
-    if (typeof p !== "string") {
-      out.push(p);
-      return;
-    }
-    let lastIdx = 0;
-    let m: RegExpExecArray | null;
-    const rx = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-    let n = 0;
-    while ((m = rx.exec(p)) !== null) {
-      if (m.index > lastIdx) out.push(p.slice(lastIdx, m.index));
-      out.push(render(m, `${i}-${n++}`));
-      lastIdx = m.index + m[0].length;
-      // Guard against zero-width matches looping forever.
-      if (m[0].length === 0) rx.lastIndex++;
-    }
-    if (lastIdx < p.length) out.push(p.slice(lastIdx));
+function buildHtml(content: string): string {
+  const raw = marked.parse(content) as string;
+  const clean = DOMPurify.sanitize(raw, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR,
+    FORCE_BODY: false,
   });
-  return out;
+
+  // Ensure all links open in a new tab safely.
+  const div = document.createElement("div");
+  div.innerHTML = clean;
+  div.querySelectorAll("a").forEach((a) => {
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+  });
+  return div.innerHTML;
 }
 
 export function MessageContent({
@@ -49,65 +32,52 @@ export function MessageContent({
   knownNames: Set<string>;
   myName: string | null;
 }) {
-  const myLower = myName?.toLowerCase() ?? null;
-  let parts: Part[] = [content];
+  const html = useMemo(() => buildHtml(content), [content]);
 
-  // Fenced code blocks. Optionally accept a language hint on the same line
-  // as the opening fence: ```rust\n...\n```. The hint becomes a small label
-  // above the block; we don't actually highlight by language yet, but the
-  // tag is preserved instead of leaking into the rendered code.
-  parts = splitOnPattern(
-    parts,
-    /```([A-Za-z0-9_+-]*)\n?([\s\S]+?)```/,
-    (m, key) => {
-      const lang = m[1] || "";
-      const body = m[2].replace(/^\n/, "").replace(/\n$/, "");
-      return (
-        <div key={key} className="md-codeblock-wrap">
-          {lang && <div className="md-codeblock-lang">{lang}</div>}
-          <pre className="md-codeblock">
-            <code>{body}</code>
-          </pre>
-        </div>
-      );
-    },
-  );
+  // Highlight @mentions by post-processing the sanitized HTML through a
+  // second DOM pass so we never feed regex-built markup into innerHTML directly.
+  const finalHtml = useMemo(() => {
+    if (!knownNames.size && !myName) return html;
+    const div = document.createElement("div");
+    div.innerHTML = html;
 
-  // Inline code
-  parts = splitOnPattern(parts, /`([^`\n]+)`/, (m, key) => (
-    <code key={key} className="md-code">
-      {m[1]}
-    </code>
-  ));
+    function walkText(node: Node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent ?? "";
+        const mentionRe = /@([\w.\-]+)/g;
+        let m: RegExpExecArray | null;
+        let last = 0;
+        const frag = document.createDocumentFragment();
+        let matched = false;
+        while ((m = mentionRe.exec(text)) !== null) {
+          const name = m[1].toLowerCase();
+          const known = knownNames.has(name);
+          if (!known) continue;
+          matched = true;
+          if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+          const span = document.createElement("span");
+          const isSelf = myName !== null && name === myName.toLowerCase();
+          span.className = isSelf ? "mention mention-self" : "mention";
+          span.textContent = m[0];
+          frag.appendChild(span);
+          last = m.index + m[0].length;
+        }
+        if (matched) {
+          if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+          node.parentNode?.replaceChild(frag, node);
+        }
+      } else if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        (node as Element).tagName !== "CODE" &&
+        (node as Element).tagName !== "PRE"
+      ) {
+        Array.from(node.childNodes).forEach(walkText);
+      }
+    }
 
-  // Bold (must run before italic since ** would otherwise match * twice)
-  parts = splitOnPattern(parts, /\*\*([^*\n]+)\*\*/, (m, key) => (
-    <strong key={key}>{m[1]}</strong>
-  ));
+    Array.from(div.childNodes).forEach(walkText);
+    return div.innerHTML;
+  }, [html, knownNames, myName]);
 
-  // Italic — single asterisk with no spaces flanking.
-  parts = splitOnPattern(parts, /\*([^*\s][^*\n]*[^*\s]|[^*\s])\*/, (m, key) => (
-    <em key={key}>{m[1]}</em>
-  ));
-
-  // Bare URLs → external links
-  parts = splitOnPattern(parts, /https?:\/\/[^\s<]+/, (m, key) => (
-    <a key={key} href={m[0]} target="_blank" rel="noreferrer">
-      {m[0]}
-    </a>
-  ));
-
-  // Mentions — last so they don't collide with URL/markdown chars
-  parts = splitOnPattern(parts, /@([\w.\-]+)/, (m, key) => {
-    const name = m[1].toLowerCase();
-    if (!knownNames.has(name)) return m[0];
-    const isSelf = myLower !== null && name === myLower;
-    return (
-      <span key={key} className={`mention ${isSelf ? "mention-self" : ""}`}>
-        {m[0]}
-      </span>
-    );
-  });
-
-  return <>{parts.map((p, i) => (typeof p === "string" ? <span key={i}>{p}</span> : p))}</>;
+  return <span className="message-md" dangerouslySetInnerHTML={{ __html: finalHtml }} />;
 }

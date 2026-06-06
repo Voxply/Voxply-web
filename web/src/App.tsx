@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useUnreadCounts } from "./hooks/useUnreadCounts";
+import { useNotificationPrefs } from "./hooks/useNotificationPrefs";
+import { useTypingIndicators } from "./hooks/useTypingIndicators";
+import { useHubConnection } from "./hooks/useHubConnection";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { flattenTree, descendantIds, computeDepth } from "@shared/utils/channels";
@@ -67,8 +71,7 @@ import {
   removeReaction,
   getUnreadCounts,
   markChannelRead,
-  sendTypingEvent,
-  sendDmTypingEvent,
+
 } from "@platform";
 import {
   listConversations,
@@ -191,8 +194,7 @@ export default function App() {
   // === Hubs ===
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [activeHubId, setActiveHubIdState] = useState<string | null>(null);
-  const [hubConnected, setHubConnected] = useState<Record<string, boolean>>({});
-  const [reconnectingHubs] = useState<Record<string, boolean>>({});
+  const { hubConnected, reconnectingHubs, handleStatusChange } = useHubConnection();
   const [assertiveAnnouncement, setAssertiveAnnouncement] = useState("");
   const [voicePoliteAnnouncement, setVoicePoliteAnnouncement] = useState("");
   const voiceAnnounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,21 +239,21 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
   const [firstNotifyingMessageId, setFirstNotifyingMessageId] = useState<string | null>(null);
-  const [typingByKey, setTypingByKey] = useState<Record<string, { name: string; ts: number }>>({});
   const [allianceMessages] = useState<Message[]>([]);
 
   // === DMs ===
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [dmMessages, setDmMessages] = useState<Record<string, DmMessage[]>>({});
-  const [dmTypingByKey, setDmTypingByKey] = useState<Record<string, { name: string; ts: number }>>({});
 
   // === Unread / notifications ===
-  const [unreadByChannel, setUnreadByChannel] = useState<Record<string, Record<string, boolean>>>({});
-  const [unreadDms, setUnreadDms] = useState<Record<string, boolean>>({});
-  const [hubNotifyMode, setHubNotifyMode] = useState<Record<string, NotifyMode>>({});
-  const [channelNotifyMode, setChannelNotifyMode] = useState<Record<string, Record<string, NotifyMode>>>({});
-  const [pinnedChannels, setPinnedChannels] = useState<Record<string, Record<string, boolean>>>({});
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, Record<string, boolean>>>({});
+  const {
+    unreadByChannel, unreadDms, setUnreadDms,
+    bumpUnread, clearUnread, clearHubUnread: clearHubUnreadFn, seedUnreadFromServer,
+  } = useUnreadCounts();
+  const {
+    hubNotifyMode, channelNotifyMode, pinnedChannels, collapsedCategories,
+    setHubNotifyMode, setCollapsedCategories, effectiveNotifyMode,
+  } = useNotificationPrefs();
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
   const [maxChannelDepth, setMaxChannelDepth] = useState(0);
 
@@ -297,11 +299,15 @@ export default function App() {
     try { return localStorage.getItem("voxply.mentionPing") !== "0"; } catch { return true; }
   });
 
+  // === Typing ===
+  const selectedChannelIdRef = useRef<string | undefined>(undefined);
+  const selectedConvIdRef = useRef<string | undefined>(undefined);
+  const { typingByKey, dmTypingByKey, receiveTyping, pingTyping, pingDmTyping } = useTypingIndicators(
+    () => selectedChannelIdRef.current,
+    () => selectedConvIdRef.current,
+  );
+
   // === Refs ===
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dmTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dmTypingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesEndChannelRef = useRef<HTMLLIElement | null>(null);
   const messagesContainerRef = useRef<HTMLOListElement | null>(null);
@@ -358,10 +364,16 @@ export default function App() {
   useEffect(() => { activeHubIdRef.current = activeHubId; }, [activeHubId]);
 
   const selectedChannelRef = useRef<Channel | null>(null);
-  useEffect(() => { selectedChannelRef.current = selectedChannel; }, [selectedChannel]);
+  useEffect(() => {
+    selectedChannelRef.current = selectedChannel;
+    selectedChannelIdRef.current = selectedChannel?.id;
+  }, [selectedChannel]);
 
   const selectedConvRef = useRef<Conversation | null>(null);
-  useEffect(() => { selectedConvRef.current = selectedConversation; }, [selectedConversation]);
+  useEffect(() => {
+    selectedConvRef.current = selectedConversation;
+    selectedConvIdRef.current = selectedConversation?.id;
+  }, [selectedConversation]);
 
   const stableHandlers: WsHandlers = useMemo(() => ({
     onMessage: (raw) => {
@@ -420,60 +432,14 @@ export default function App() {
       }
     },
     onTyping: (raw) => {
-      const m = raw as Record<string, unknown>;
-      const type = m.type as string;
-      const sender = m.sender as string | undefined;
-      const name = (m.sender_name as string | undefined) ?? (sender ? sender.slice(0, 8) : "Someone");
-      const now = Date.now();
-      if (type === "typing" || type === "typing_start") {
-        const channelId = m.channel_id as string | undefined;
-        if (!channelId) return;
-        const key = `${channelId}:${sender ?? ""}`;
-        setTypingByKey((prev) => ({ ...prev, [key]: { name, ts: now } }));
-        setTimeout(() => {
-          setTypingByKey((prev) => {
-            const entry = prev[key];
-            if (!entry || entry.ts !== now) return prev;
-            const { [key]: _, ...rest } = prev;
-            return rest;
-          });
-        }, 6000);
-      } else if (type === "typing_stop") {
-        const channelId = m.channel_id as string | undefined;
-        if (!channelId || !sender) return;
-        const key = `${channelId}:${sender}`;
-        setTypingByKey((prev) => { const { [key]: _, ...rest } = prev; return rest; });
-      } else if (type === "dm_typing") {
-        const convId = m.conversation_id as string | undefined;
-        if (!convId) return;
-        const key = `${convId}:${sender ?? ""}`;
-        setDmTypingByKey((prev) => ({ ...prev, [key]: { name, ts: now } }));
-        setTimeout(() => {
-          setDmTypingByKey((prev) => {
-            const entry = prev[key];
-            if (!entry || entry.ts !== now) return prev;
-            const { [key]: _, ...rest } = prev;
-            return rest;
-          });
-        }, 6000);
-      }
+      receiveTyping(raw as Record<string, unknown>);
     },
     onScreenShare: () => {},
     onStatusChange: (connected) => {
       const id = activeHubIdRef.current;
       if (id) {
-        setHubConnected((prev) => {
-          const was = prev[id];
-          if (id === activeHubIdRef.current) {
-            const hubName = hubs.find((h) => h.hub_id === id)?.hub_name ?? "hub";
-            if (connected && was === false) {
-              setAssertiveAnnouncement(`Reconnected to ${hubName}.`);
-            } else if (!connected && was !== false) {
-              setAssertiveAnnouncement(`Disconnected from ${hubName}. Reconnecting…`);
-            }
-          }
-          return { ...prev, [id]: connected };
-        });
+        const hubName = hubs.find((h) => h.hub_id === id)?.hub_name ?? "hub";
+        handleStatusChange(id, hubName, connected, setAssertiveAnnouncement);
       }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -524,31 +490,7 @@ export default function App() {
     void checkFarmAdmin();
   }, [publicKey, hubs.length]);
 
-  // === Helpers ===
-
-  function bumpUnread(hubId: string, channelId: string) {
-    setUnreadByChannel((prev) => ({
-      ...prev,
-      [hubId]: { ...(prev[hubId] ?? {}), [channelId]: true },
-    }));
-  }
-
-  function clearUnread(hubId: string, channelId: string) {
-    setUnreadByChannel((prev) => {
-      const m = prev[hubId];
-      if (!m?.[channelId]) return prev;
-      const { [channelId]: _, ...rest } = m;
-      return { ...prev, [hubId]: rest };
-    });
-  }
-
-  function clearHubUnread(hubId: string) {
-    setUnreadByChannel((prev) => ({ ...prev, [hubId]: {} }));
-  }
-
-  function effectiveNotifyMode(hubId: string, channelId: string): NotifyMode {
-    return channelNotifyMode[hubId]?.[channelId] ?? hubNotifyMode[hubId] ?? "all";
-  }
+  function clearHubUnread(hubId: string) { clearHubUnreadFn(hubId); }
 
   // === Hub data loading ===
 
@@ -574,13 +516,7 @@ export default function App() {
       if (cmds.status === "fulfilled") setSlashCommands(cmds.value);
       const hubId = getActiveHubId();
       if (hubId) {
-        getUnreadCounts().then((counts) => {
-          const map: Record<string, boolean> = {};
-          for (const c of counts) {
-            if (c.unread_count > 0) map[c.channel_id] = true;
-          }
-          setUnreadByChannel((prev) => ({ ...prev, [hubId]: map }));
-        }).catch(() => {});
+        getUnreadCounts().then((counts) => seedUnreadFromServer(hubId, counts)).catch(() => {});
       }
     } finally {
       loadingHub.current = false;
@@ -849,42 +785,6 @@ export default function App() {
     } catch {}
   }
 
-  // === Typing events ===
-
-  function handlePingTyping() {
-    if (!selectedChannel) return;
-    const chId = selectedChannel.id;
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
-      typingTimerRef.current = null;
-    } else {
-      try { sendTypingEvent(chId); } catch {}
-    }
-    typingTimerRef.current = setTimeout(() => { typingTimerRef.current = null; }, 3000);
-    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
-    typingStopTimerRef.current = setTimeout(() => {
-      typingStopTimerRef.current = null;
-      typingTimerRef.current = null;
-    }, 5000);
-  }
-
-  function handlePingDmTyping() {
-    if (!selectedConversation) return;
-    const convId = selectedConversation.id;
-    if (dmTypingTimerRef.current) {
-      clearTimeout(dmTypingTimerRef.current);
-      dmTypingTimerRef.current = null;
-    } else {
-      try { sendDmTypingEvent(convId); } catch {}
-    }
-    dmTypingTimerRef.current = setTimeout(() => { dmTypingTimerRef.current = null; }, 3000);
-    if (dmTypingStopTimerRef.current) clearTimeout(dmTypingStopTimerRef.current);
-    dmTypingStopTimerRef.current = setTimeout(() => {
-      dmTypingStopTimerRef.current = null;
-      dmTypingTimerRef.current = null;
-    }, 5000);
-  }
-
   // === Voice (not available in browser) ===
 
   function showVoiceNotAvailable() {
@@ -1006,20 +906,34 @@ export default function App() {
         messageInputRef.current?.focus();
         return;
       }
-      if (e.key === "Alt" && (e.code === "ArrowDown" || e.code === "ArrowUp")) {
+      if (e.altKey && (e.code === "ArrowDown" || e.code === "ArrowUp")) {
         e.preventDefault();
+        const hubId = activeHubIdRef.current;
+        const unreadSet = hubId ? (unreadByChannel[hubId] ?? {}) : {};
         const visibleChannels = channels.filter((c) => !c.is_category);
-        const idx = visibleChannels.findIndex((c) => c.id === selectedChannel?.id);
+        const unreadChannels = visibleChannels.filter((c) => unreadSet[c.id]);
+        const pool = unreadChannels.length > 0 ? unreadChannels : visibleChannels;
+        const idx = pool.findIndex((c) => c.id === selectedChannel?.id);
         const next = e.code === "ArrowDown"
-          ? visibleChannels[idx + 1]
-          : visibleChannels[idx - 1];
-        if (next) setSelectedChannel(next);
+          ? pool[(idx + 1) % pool.length]
+          : pool[(idx - 1 + pool.length) % pool.length];
+        if (next) void handleSelectChannel(next);
         return;
+      }
+      if (e.key === "Escape" && !inInput) {
+        if (showKeyboardShortcuts) { setShowKeyboardShortcuts(false); return; }
+        if (showSettings) { setShowSettings(false); return; }
+        if (showHubAdmin) { setShowHubAdmin(false); return; }
+        if (showFarmSettings) { setShowFarmSettings(false); return; }
+        if (showCreateHub) { setShowCreateHub(false); return; }
+        if (showAddHub) { setShowAddHub(false); return; }
+        if (showSearchBar) { setShowSearchBar(false); return; }
+        if (searchOpen) { setSearchOpen(false); return; }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [hubs, channels, selectedChannel, messageInputRef]);
+  }, [hubs, channels, selectedChannel, messageInputRef, unreadByChannel, showKeyboardShortcuts, showSettings, showHubAdmin, showFarmSettings, showCreateHub, showAddHub, showSearchBar, searchOpen]);
 
   // === Render ===
 
@@ -1301,8 +1215,8 @@ export default function App() {
         onSend={handleSend}
         onSendDm={handleSendDm}
         onSendAllianceMessage={() => {}}
-        onPingTyping={handlePingTyping}
-        onPingDmTyping={handlePingDmTyping}
+        onPingTyping={pingTyping}
+        onPingDmTyping={pingDmTyping}
         onSetPendingAttachments={setPendingAttachments}
         onAttachFiles={() => {}}
         onOpenEditDescription={() => {}}

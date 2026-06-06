@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   Channel,
@@ -42,6 +42,8 @@ import { BotCard } from "./BotCard";
 import { PinnedMessagesModal } from "./PinnedMessagesModal";
 import { UserProfileCard } from "./UserProfileCard";
 import { pinMessage, unpinMessage } from "@platform";
+import { activeSession } from "../platform/session";
+import { LinkPreviewInMessage } from "./LinkPreviewInMessage";
 
 interface SelectedAllianceChannel {
   alliance_id: string;
@@ -174,8 +176,20 @@ export function ContentArea({
   onOpenUserProfile,
 }: Props) {
   const { t } = useTranslation();
+
+  const sessionInfo = useMemo(() => {
+    try {
+      const s = activeSession();
+      return { hubUrl: s.hub_url, token: s.token };
+    } catch {
+      return null;
+    }
+  }, [activeHubId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandEntry[]>([]);
   const [slashSelectedIdx, setSlashSelectedIdx] = useState(0);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionSelectedIdx, setMentionSelectedIdx] = useState(0);
   const [botCard, setBotCard] = useState<{ pubkey: string; rect: DOMRect } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeGame, setActiveGame] = useState<InstalledGame | null>(null);
@@ -240,6 +254,30 @@ export function ContentArea({
     } else {
       setSlashSuggestions([]);
     }
+
+    const mentionMatch = /@([\w.]*)$/.exec(value);
+    if (mentionMatch) {
+      setMentionQuery(mentionMatch[1].toLowerCase());
+      setMentionSelectedIdx(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }
+
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    return users
+      .filter((u) => {
+        const name = (u.display_name ?? "").toLowerCase();
+        return name && name.startsWith(mentionQuery);
+      })
+      .slice(0, 8);
+  }, [mentionQuery, users]);
+
+  function fillMention(displayName: string) {
+    const next = inputText.replace(/@([\w.]*)$/, `@${displayName} `);
+    onInputTextChange(next);
+    setMentionQuery(null);
   }
 
   function fillSlashCommand(command: string) {
@@ -249,6 +287,28 @@ export function ContentArea({
   }
 
   function handleSlashKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (mentionSuggestions.length > 0 && mentionQuery !== null) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionSelectedIdx((i) => (i + 1) % mentionSuggestions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionSelectedIdx((i) => (i - 1 + mentionSuggestions.length) % mentionSuggestions.length);
+        return;
+      }
+      if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        const u = mentionSuggestions[mentionSelectedIdx];
+        if (u?.display_name) fillMention(u.display_name);
+        return;
+      }
+      if (e.key === "Escape") {
+        setMentionQuery(null);
+        return;
+      }
+    }
     if (slashSuggestions.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -702,6 +762,13 @@ export function ContentArea({
                             <span className="message-content">
                               <MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} />
                             </span>
+                            {sessionInfo && (
+                              <LinkPreviewInMessage
+                                text={m.content}
+                                hubUrl={sessionInfo.hubUrl}
+                                token={sessionInfo.token}
+                              />
+                            )}
                             {m.attachments && m.attachments.length > 0 && (
                               <MessageAttachments items={m.attachments} onImageClick={onOpenImage} />
                             )}
@@ -845,6 +912,19 @@ export function ContentArea({
                 />
               </label>
               <div style={{ position: "relative", flex: 1 }}>
+                {mentionSuggestions.length > 0 && mentionQuery !== null && (
+                  <div className="mention-popup">
+                    {mentionSuggestions.map((u, i) => (
+                      <div
+                        key={u.public_key}
+                        className={`mention-popup-item${i === mentionSelectedIdx ? " selected" : ""}`}
+                        onMouseDown={(e) => { e.preventDefault(); if (u.display_name) fillMention(u.display_name); }}
+                      >
+                        <span className="mention-popup-name">{u.display_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {slashSuggestions.length > 0 && (
                   <div className="slash-command-popup">
                     {slashSuggestions.map((s, i) => (

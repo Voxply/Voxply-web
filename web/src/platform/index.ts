@@ -124,6 +124,8 @@ export {
 
 export { uploadFile } from "./commands/uploads";
 
+export { fetchLinkPreview } from "./commands/linkPreview";
+
 export { pinMessage, unpinMessage, getPins } from "./commands/pins";
 
 export { getUserProfile } from "./commands/profiles";

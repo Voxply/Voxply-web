@@ -4448,3 +4448,150 @@ a.embed-title:hover {
   padding: 1px 6px;
   white-space: nowrap;
 }
+
+/* ============================================================
+   MENTION AUTOCOMPLETE POPUP
+   ============================================================ */
+.mention-popup {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg, 0 4px 16px rgba(0,0,0,.3));
+  z-index: 200;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.mention-popup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.mention-popup-item:hover,
+.mention-popup-item.selected {
+  background: var(--bg-elevated);
+}
+
+.mention-popup-name {
+  font-weight: var(--weight-medium);
+}
+
+/* ============================================================
+   LINK PREVIEW CARD
+   ============================================================ */
+.link-preview-card {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent, #5865f2);
+  border-radius: var(--r-md);
+  text-decoration: none;
+  color: inherit;
+  max-width: 480px;
+  overflow: hidden;
+}
+
+.link-preview-card:hover {
+  background: var(--bg-elevated);
+}
+
+.link-preview-image {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+
+.link-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.link-preview-domain {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.link-preview-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link-preview-description {
+  font-size: var(--text-xs);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================================
+   MARKDOWN MESSAGE CONTENT
+   ============================================================ */
+.message-md p {
+  margin: 0 0 var(--space-1) 0;
+}
+
+.message-md p:last-child {
+  margin-bottom: 0;
+}
+
+.message-md code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--bg-elevated);
+  border-radius: var(--r-sm);
+  padding: 1px 4px;
+}
+
+.message-md pre {
+  background: var(--bg-elevated);
+  border-radius: var(--r-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: var(--space-2) 0;
+}
+
+.message-md pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-md blockquote {
+  border-left: 3px solid var(--border);
+  margin: var(--space-2) 0;
+  padding: 0 var(--space-3);
+  color: var(--text-muted);
+}
+
+.message-md ul,
+.message-md ol {
+  margin: var(--space-1) 0;
+  padding-left: var(--space-5);
+}
+
+.message-md a {
+  color: var(--accent, #5865f2);
+  text-decoration: underline;
+}
