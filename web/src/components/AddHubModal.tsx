@@ -23,8 +23,8 @@ export function AddHubModal({ hubUrl, onHubUrlChange, hubPreview, inviteCode, on
   return (
     <div className="modal-overlay" onClick={onClose}>
       <FocusTrap>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Add Hub</h3>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-hub-title" onClick={(e) => e.stopPropagation()}>
+        <h3 id="add-hub-title">Add Hub</h3>
         <p className="muted" style={{ marginBottom: "var(--space-3)" }}>
           Paste a hub address or a <code>voxply://</code> invite link.
         </p>
