@@ -127,6 +127,7 @@
   "settings.devices.pairing.title": "Abbinamento dispositivo",
   "settings.devices.pairing.hint": "Collega questo dispositivo alla tua identità su un'altra macchina, o consenti a un nuovo dispositivo di unirsi usando la tua identità esistente.",
   "settings.about.description": "Voxply — chat vocale decentralizzata + piattaforma community.",
+  "channel.sidebar.label": "Canali",
   "member.list.title": "Membri",
   "member.list.bots": "Bot — {count}",
   "bot.badge": "BOT",
