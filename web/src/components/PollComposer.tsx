@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import type { Poll } from "../types";
 import { createPoll } from "@platform";
 
@@ -10,12 +10,17 @@ interface Props {
 
 export function PollComposer({ channelId, onCreated, onClose }: Props) {
   const [question, setQuestion] = useState("");
-  const [options, setOptions] = useState<string[]>(["", ""]);
+  const nextId = useRef(2);
+  const [options, setOptions] = useState<{ id: number; value: string }[]>(() => [
+    { id: 0, value: "" },
+    { id: 1, value: "" },
+  ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function addOption() {
-    setOptions((prev) => [...prev, ""]);
+    const id = nextId.current++;
+    setOptions((prev) => [...prev, { id, value: "" }]);
   }
 
   function removeOption(i: number) {
@@ -23,12 +28,12 @@ export function PollComposer({ channelId, onCreated, onClose }: Props) {
   }
 
   function setOption(i: number, value: string) {
-    setOptions((prev) => prev.map((o, idx) => (idx === i ? value : o)));
+    setOptions((prev) => prev.map((o, idx) => (idx === i ? { ...o, value } : o)));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const filled = options.map((o) => o.trim()).filter(Boolean);
+    const filled = options.map((o) => o.value.trim()).filter(Boolean);
     if (!question.trim() || filled.length < 2) {
       setError("Question and at least 2 options are required.");
       return;
@@ -79,10 +84,10 @@ export function PollComposer({ channelId, onCreated, onClose }: Props) {
           <div className="settings-section" style={{ marginBottom: 12 }}>
             <label className="settings-label">Options</label>
             {options.map((opt, i) => (
-              <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <div key={opt.id} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                 <input
                   type="text"
-                  value={opt}
+                  value={opt.value}
                   onChange={(e) => setOption(i, e.target.value)}
                   placeholder={`Option ${i + 1}`}
                   style={{ flex: 1 }}
