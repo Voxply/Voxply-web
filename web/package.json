@@ -24,6 +24,7 @@
     "i18next": "^24.2.3",
     "i18next-icu": "^2.4.3",
     "idb": "^8.0.0",
+    "intl-messageformat": "^11.2.8",
     "marked": "^18.0.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
