@@ -108,11 +108,12 @@ export function SettingsPage(props: SettingsPageProps) {
           <section>
             <h1 style={{ marginBottom: 20 }}>Profile</h1>
             <div className="settings-section" style={{ marginBottom: 20 }}>
-              <label className="settings-label">Display name</label>
+              <label className="settings-label" htmlFor="settings-display-name">Display name</label>
               <p className="muted" style={{ fontSize: "var(--text-sm)", marginBottom: 8 }}>
                 This name is shown to other members of hubs you join.
               </p>
               <input
+                id="settings-display-name"
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -121,11 +122,12 @@ export function SettingsPage(props: SettingsPageProps) {
               />
             </div>
             <div className="settings-section" style={{ marginBottom: 20 }}>
-              <label className="settings-label">Avatar URL</label>
+              <label className="settings-label" htmlFor="settings-avatar-url">Avatar URL</label>
               <p className="muted" style={{ fontSize: "var(--text-sm)", marginBottom: 8 }}>
                 Link to an image to use as your avatar.
               </p>
               <input
+                id="settings-avatar-url"
                 type="url"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}

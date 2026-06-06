@@ -65,8 +65,9 @@ export function EventComposer({ onCreated, onClose }: Props) {
 
         <form onSubmit={handleSubmit}>
           <div className="settings-section" style={{ marginBottom: 10 }}>
-            <label className="settings-label">Title</label>
+            <label className="settings-label" htmlFor="event-title">Title</label>
             <input
+              id="event-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -77,8 +78,9 @@ export function EventComposer({ onCreated, onClose }: Props) {
           </div>
 
           <div className="settings-section" style={{ marginBottom: 10 }}>
-            <label className="settings-label">Description</label>
+            <label className="settings-label" htmlFor="event-description">Description</label>
             <textarea
+              id="event-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description"
@@ -88,8 +90,9 @@ export function EventComposer({ onCreated, onClose }: Props) {
           </div>
 
           <div className="settings-section" style={{ marginBottom: 10 }}>
-            <label className="settings-label">Location</label>
+            <label className="settings-label" htmlFor="event-location">Location</label>
             <input
+              id="event-location"
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -100,8 +103,9 @@ export function EventComposer({ onCreated, onClose }: Props) {
 
           <div className="settings-row" style={{ display: "flex", gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label className="settings-label">Start</label>
+              <label className="settings-label" htmlFor="event-start">Start</label>
               <input
+                id="event-start"
                 type="datetime-local"
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
@@ -109,8 +113,9 @@ export function EventComposer({ onCreated, onClose }: Props) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label className="settings-label">End (optional)</label>
+              <label className="settings-label" htmlFor="event-end">End (optional)</label>
               <input
+                id="event-end"
                 type="datetime-local"
                 value={endAt}
                 onChange={(e) => setEndAt(e.target.value)}

@@ -41,16 +41,18 @@ export function DndSettingsSection({ dnd, onChange }: Props) {
       {dnd.schedule && (
         <div className="dnd-schedule" style={{ marginTop: 8 }}>
           <div className="settings-row">
-            <label className="settings-label">Start</label>
+            <label className="settings-label" htmlFor="dnd-start">Start</label>
             <input
+              id="dnd-start"
               type="time"
               value={dnd.schedule.start}
               onChange={(e) => onChange({ ...dnd, schedule: { ...dnd.schedule!, start: e.target.value } })}
             />
           </div>
           <div className="settings-row">
-            <label className="settings-label">End</label>
+            <label className="settings-label" htmlFor="dnd-end">End</label>
             <input
+              id="dnd-end"
               type="time"
               value={dnd.schedule.end}
               onChange={(e) => onChange({ ...dnd, schedule: { ...dnd.schedule!, end: e.target.value } })}
