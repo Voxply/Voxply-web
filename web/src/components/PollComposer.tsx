@@ -77,6 +77,7 @@ export function PollComposer({ channelId, onCreated, onClose }: Props) {
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Ask a question…"
               style={{ width: "100%" }}
+              maxLength={200}
               autoFocus
             />
           </div>
@@ -90,6 +91,7 @@ export function PollComposer({ channelId, onCreated, onClose }: Props) {
                   value={opt.value}
                   onChange={(e) => setOption(i, e.target.value)}
                   placeholder={`Option ${i + 1}`}
+                  maxLength={100}
                   style={{ flex: 1 }}
                 />
                 {options.length > 2 && (
