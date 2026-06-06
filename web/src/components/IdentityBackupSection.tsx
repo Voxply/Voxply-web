@@ -186,6 +186,7 @@ export function IdentityBackupSection({ publicKey, onExported, onImported }: Pro
           <input
             type="password"
             placeholder="Passphrase"
+            aria-label="Export passphrase"
             value={exportPassphrase}
             onChange={(e) => setExportPassphrase(e.target.value)}
             style={{ width: "100%", marginBottom: 4 }}
@@ -203,6 +204,7 @@ export function IdentityBackupSection({ publicKey, onExported, onImported }: Pro
           <input
             type="password"
             placeholder="Confirm passphrase"
+            aria-label="Confirm export passphrase"
             value={exportConfirm}
             onChange={(e) => setExportConfirm(e.target.value)}
             style={{ width: "100%", margin: "4px 0" }}
@@ -210,6 +212,7 @@ export function IdentityBackupSection({ publicKey, onExported, onImported }: Pro
           <input
             type="text"
             placeholder="Label (optional, e.g. laptop backup May 2026)"
+            aria-label="Backup label"
             value={exportLabel}
             onChange={(e) => setExportLabel(e.target.value)}
             style={{ width: "100%", marginBottom: 8 }}
@@ -248,6 +251,7 @@ export function IdentityBackupSection({ publicKey, onExported, onImported }: Pro
           <input
             type="password"
             placeholder="Passphrase"
+            aria-label="Import passphrase"
             value={importPassphrase}
             onChange={(e) => setImportPassphrase(e.target.value)}
             style={{ width: "100%", marginBottom: 8 }}
