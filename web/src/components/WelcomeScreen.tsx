@@ -143,7 +143,7 @@ interface WelcomeScreenContainerProps {
 }
 
 export function WelcomeScreenContainer({ wsHandlers, onHubAdded, onDismiss }: WelcomeScreenContainerProps) {
-  const [hubUrl, setHubUrl] = useState("http://localhost:3000");
+  const [hubUrl, setHubUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hubPreview, setHubPreview] = useState<HubPreview>({ state: "idle" });

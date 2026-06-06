@@ -201,7 +201,7 @@ export default function App() {
   const pendingVoiceAnnouncementsRef = useRef<string[]>([]);
   const [pingByHub, setPingByHub] = useState<Record<string, number | null>>({});
   const [hubDropdownOpen, setHubDropdownOpen] = useState(false);
-  const [hubUrl, setHubUrl] = useState("http://localhost:3000");
+  const [hubUrl, setHubUrl] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [hubPreview, setHubPreview] = useState<HubPreview>({ state: "idle" });
   const [addingHub, setAddingHub] = useState(false);
@@ -582,7 +582,7 @@ export default function App() {
       setHubs(listHubs());
       setActiveHubIdState(hub.hub_id);
       setShowAddHub(false);
-      setHubUrl("http://localhost:3000");
+      setHubUrl("");
       setInviteCode("");
       setHubPreview({ state: "idle" });
       await loadHubData();
