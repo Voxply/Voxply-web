@@ -159,7 +159,7 @@ export function GameModal({
                 This game can:{" "}
                 {[...grantedPerms].map((p) => PERM_LABELS[p] ?? p).join(", ")}.
               </span>
-              <button className="btn-ghost" onClick={() => setPermsDismissed(true)}>×</button>
+              <button className="btn-ghost" onClick={() => setPermsDismissed(true)} aria-label="Dismiss" title="Dismiss">×</button>
             </div>
           )}
           <iframe

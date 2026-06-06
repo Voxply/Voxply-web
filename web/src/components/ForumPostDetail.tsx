@@ -220,7 +220,7 @@ export function ForumPostDetail({ postId, publicKey, isAdmin, canManagePosts, on
           {replyTo && (
             <div className="forum-reply-to-hint muted">
               Replying to a comment
-              <button className="btn-ghost" onClick={() => setReplyTo(undefined)}>×</button>
+              <button className="btn-ghost" onClick={() => setReplyTo(undefined)} aria-label="Clear reply" title="Clear reply">×</button>
             </div>
           )}
           <textarea
