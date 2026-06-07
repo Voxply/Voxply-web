@@ -202,7 +202,7 @@ export function ChannelSidebar({
       if (collapsedCategories[activeHubId]?.[node.node.id]) {
         onToggleCategoryCollapsed(activeHubId, node.node.id);
       }
-    } else if ((e.key === "Enter" || e.key === " ") && !node.node.is_category) {
+    } else if ((e.key === "Enter" || e.key === " ") && !node.node.is_category && node.node.channel_type !== "banner") {
       e.preventDefault();
       onSelectChannel(node.node);
     }
@@ -332,6 +332,7 @@ export function ChannelSidebar({
                         muted={!!activeHubId && effectiveNotifyMode(activeHubId, n.node.id) === "silent"}
                         participants={voicePartByChannel[n.node.id] ?? []}
                         isCurrentVoiceChannel={voiceChannelId === n.node.id}
+                        hubUrl={activeHub?.hub_url}
                         style={{ paddingLeft: n.depth * CHANNEL_INDENT_PX }}
                         tabIndex={channelFocusIndex === index ? 0 : -1}
                         onClick={() => { setChannelFocusIndex(index); onSelectChannel(n.node); }}

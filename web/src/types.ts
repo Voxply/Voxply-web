@@ -10,7 +10,9 @@ export interface Channel {
   created_by: string;
   parent_id: string | null;
   is_category: boolean;
-  channel_type?: "text" | "forum";
+  channel_type?: "text" | "forum" | "banner";
+  banner_url?: string | null;
+  banner_file_id?: string | null;
   display_order: number;
   description: string | null;
   icon: string | null;

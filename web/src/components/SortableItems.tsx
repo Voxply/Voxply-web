@@ -39,6 +39,7 @@ export function SortableChannelItem({
   muted,
   participants,
   isCurrentVoiceChannel,
+  hubUrl,
   style,
   tabIndex,
   onClick,
@@ -55,6 +56,7 @@ export function SortableChannelItem({
   muted: boolean;
   participants: VoiceParticipant[];
   isCurrentVoiceChannel: boolean;
+  hubUrl?: string;
   style?: React.CSSProperties;
   tabIndex?: number;
   onClick: () => void;
@@ -65,6 +67,37 @@ export function SortableChannelItem({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: channel.id });
+
+  const isBanner = channel.channel_type === "banner";
+  const bannerSrc = channel.banner_url
+    ? channel.banner_url
+    : channel.banner_file_id && hubUrl
+      ? `${hubUrl}/uploads/${channel.banner_file_id}`
+      : undefined;
+
+  if (isBanner) {
+    return (
+      <li
+        ref={setNodeRef}
+        className={`channel-item-wrap ${isDragging ? "dragging" : ""}`}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+          ...style,
+        }}
+        {...attributes}
+        {...listeners}
+      >
+        {bannerSrc && (
+          <img
+            src={bannerSrc}
+            alt=""
+            style={{ width: "100%", height: "auto", display: "block", borderRadius: 4 }}
+          />
+        )}
+      </li>
+    );
+  }
 
   const ariaLabelParts = [channel.name];
   const uc = unreadCount ?? 0;
