@@ -1115,6 +1115,7 @@ export default function App() {
             onThemeChange={handleSetTheme}
             skin={skin}
             onSkinChange={handleSkinChange}
+            onImportSkin={(s) => { handleSkinChange(s); handleSetTheme("custom"); }}
             profiles={namedProfiles}
             defaultProfileId={defaultProfileId}
             mentionPingEnabled={mentionPingEnabled}

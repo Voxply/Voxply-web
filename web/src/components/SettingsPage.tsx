@@ -4,6 +4,7 @@ import { hubFetch, getNotifPref, setNotifPref } from "@platform";
 import { loadIdentity, seedToPhrase } from "@identity/index";
 import { BlockIgnoreSection } from "./BlockIgnoreSection";
 import { SkinEditor, makeSeed } from "./SkinEditor";
+import { SkinsGallery } from "./SkinsGallery";
 import type { ThemeId, VoxplySkin } from "../skinValidation";
 
 export type SettingsTab = "profile" | "notifications" | "appearance" | "account";
@@ -31,6 +32,7 @@ interface SettingsPageProps {
   onUnblock: (pubkey: string) => void;
   onUnignore: (pubkey: string) => void;
   knownNames: Record<string, string | null>;
+  onImportSkin: (skin: VoxplySkin) => void;
 }
 
 const TABS: { id: SettingsTab; label: string }[] = [
@@ -269,6 +271,7 @@ export function SettingsPage(props: SettingsPageProps) {
                 <SkinEditor skin={props.skin ?? makeSeed("calm")} onChange={props.onSkinChange} />
               )}
             </div>
+            <SkinsGallery onImport={props.onImportSkin} />
           </section>
         )}
 
