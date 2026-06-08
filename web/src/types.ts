@@ -848,11 +848,12 @@ export interface CertAdmissionSettings {
 // ---- Identity Recovery ----
 
 export interface RecoveryContact {
-  contact_pubkey: string;
-  created_at: number;
+  pubkey: string;
+  added_at: number;
 }
 
 export interface RecoverySettings {
+  owner_pubkey: string;
   threshold: number;
   contacts: RecoveryContact[];
 }
@@ -861,13 +862,10 @@ export interface RecoveryRotationRequest {
   id: string;
   old_pubkey: string;
   new_pubkey: string;
-  status: "gathering" | "ready_for_review" | "approved" | "rejected" | "expired";
+  status: string;
   reason: string | null;
   created_at: number;
-  decided_at: number | null;
-  decided_by: string | null;
   attestation_count: number;
-  threshold: number;
 }
 
 // ---- Block / Ignore / DND ----

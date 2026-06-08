@@ -187,28 +187,25 @@ export async function getRecoveryContacts(): Promise<RecoverySettings> {
 export async function setRecoveryContacts(threshold: number, contactPubkeys: string[]): Promise<void> {
   await hubFetch("/recovery/contacts", {
     method: "PUT",
-    body: JSON.stringify({ threshold, contact_pubkeys: contactPubkeys }),
+    body: JSON.stringify({ threshold, contacts: contactPubkeys }),
   });
 }
 
-export async function clearRecoveryContacts(): Promise<void> {
-  await hubFetch("/recovery/contacts", { method: "DELETE" });
+export async function removeRecoveryContact(pubkey: string): Promise<void> {
+  await hubFetch(`/recovery/contacts/${encodeURIComponent(pubkey)}`, { method: "DELETE" });
 }
 
 export async function listAdminRecoveryRequests(): Promise<RecoveryRotationRequest[]> {
-  const r = await hubFetch("/admin/recovery/requests");
+  const r = await hubFetch("/admin/recovery/pending");
   return r.json() as Promise<RecoveryRotationRequest[]>;
 }
 
-export async function decideRecoveryRequest(
-  requestId: string,
-  decision: "approve" | "reject",
-  roleIds?: string[],
-): Promise<void> {
-  await hubFetch(`/admin/recovery/requests/${requestId}/decide`, {
-    method: "POST",
-    body: JSON.stringify({ decision, role_ids: roleIds }),
-  });
+export async function approveRecoveryRequest(requestId: string): Promise<void> {
+  await hubFetch(`/admin/recovery/${requestId}/approve`, { method: "POST" });
+}
+
+export async function denyRecoveryRequest(requestId: string): Promise<void> {
+  await hubFetch(`/admin/recovery/${requestId}/deny`, { method: "POST" });
 }
 
 // ---- Block / DM-blocks ----

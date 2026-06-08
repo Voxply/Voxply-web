@@ -4,9 +4,10 @@ import { formatPubkey } from "../utils/format";
 import {
   getRecoveryContacts,
   setRecoveryContacts,
-  clearRecoveryContacts,
+  removeRecoveryContact,
   listAdminRecoveryRequests,
-  decideRecoveryRequest,
+  approveRecoveryRequest,
+  denyRecoveryRequest,
 } from "../platform/commands/hubAdmin";
 
 interface Props {
@@ -34,7 +35,7 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
     try {
       const s = await getRecoveryContacts();
       setThreshold(s.threshold);
-      setContactsText(s.contacts.map((c) => c.contact_pubkey).join("\n"));
+      setContactsText(s.contacts.map((c) => c.pubkey).join("\n"));
     } catch { /* first load — ignore */ }
   }
 
@@ -55,6 +56,7 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
     setSaveStatus("saving");
     try {
       await setRecoveryContacts(threshold, keys);
+      await loadContacts();
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (e) {
@@ -62,20 +64,28 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
     }
   }
 
-  async function handleClear() {
-    if (!confirm("Clear all recovery contacts for this hub?")) return;
+  async function handleRemove(pubkey: string) {
     try {
-      await clearRecoveryContacts();
-      setContactsText("");
-      setThreshold(2);
+      await removeRecoveryContact(pubkey);
+      setContactsText((prev) =>
+        prev
+          .split(/[\n,]/)
+          .map((k) => k.trim())
+          .filter((k) => k !== pubkey)
+          .join("\n"),
+      );
     } catch (e) {
       setSaveStatus(String(e));
     }
   }
 
-  async function handleDecide(requestId: string, decision: "approve" | "reject") {
+  async function handleDecide(requestId: string, decision: "approve" | "deny") {
     try {
-      await decideRecoveryRequest(requestId, decision);
+      if (decision === "approve") {
+        await approveRecoveryRequest(requestId);
+      } else {
+        await denyRecoveryRequest(requestId);
+      }
       await loadRequests();
     } catch (e) {
       setLoadError(String(e));
@@ -100,6 +110,16 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
           placeholder="Enter master pubkeys of trusted contacts…"
           style={{ width: "100%", fontFamily: "monospace" }}
         />
+        {contactsText.trim() && (
+          <div style={{ marginTop: 4 }}>
+            {contactsText.split(/[\n,]/).map((k) => k.trim()).filter(Boolean).map((pk) => (
+              <div key={pk} className="settings-row" style={{ marginBottom: 2 }}>
+                <code style={{ flex: 1, fontSize: "var(--text-xs)" }}>{formatPubkey(pk)}</code>
+                <button className="btn-secondary" onClick={() => handleRemove(pk)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="settings-row" style={{ marginTop: 8 }}>
           <label className="settings-label" htmlFor="recovery-threshold">Threshold (K-of-N needed)</label>
           <input
@@ -120,7 +140,6 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
           <button onClick={handleSave} disabled={saveStatus === "saving"}>
             {saveStatus === "saving" ? "Saving…" : "Save contacts"}
           </button>
-          <button className="btn-secondary danger" onClick={handleClear}>Clear</button>
         </div>
       </div>
 
@@ -141,15 +160,15 @@ export function RecoveryContactsSection({ hubUrl: _hubUrl, isAdmin, publicKey: _
                   <div><strong>New key:</strong> <code>{formatPubkey(req.new_pubkey)}</code></div>
                   {req.reason && <div className="muted">{req.reason}</div>}
                   <div className="muted">
-                    Attestations: {req.attestation_count}/{req.threshold} · Status: {req.status}
+                    Attestations: {req.attestation_count} · Status: {req.status}
                   </div>
                 </div>
               </div>
-              {req.status === "ready_for_review" && (
+              {(req.status === "ready_for_review" || req.status === "pending") && (
                 <div className="settings-row" style={{ marginTop: 8 }}>
                   <button onClick={() => handleDecide(req.id, "approve")}>Approve transfer</button>
-                  <button className="btn-secondary danger" onClick={() => handleDecide(req.id, "reject")}>
-                    Reject
+                  <button className="btn-secondary danger" onClick={() => handleDecide(req.id, "deny")}>
+                    Deny
                   </button>
                 </div>
               )}
