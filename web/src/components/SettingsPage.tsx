@@ -3,6 +3,8 @@ import type { Hub, NamedProfile, NotifLevel, BlockEntry, IgnoreEntry } from "@sh
 import { hubFetch, getNotifPref, setNotifPref } from "@platform";
 import { loadIdentity, seedToPhrase } from "@identity/index";
 import { BlockIgnoreSection } from "./BlockIgnoreSection";
+import { SkinEditor, makeSeed } from "./SkinEditor";
+import type { ThemeId, VoxplySkin } from "../skinValidation";
 
 export type SettingsTab = "profile" | "notifications" | "appearance" | "account";
 
@@ -14,8 +16,10 @@ interface SettingsPageProps {
   publicKey: string | null;
   copiedKey: boolean;
   onCopyKey: () => void;
-  theme: "calm" | "classic" | "linear" | "light";
-  onThemeChange: (t: "calm" | "classic" | "linear" | "light") => void;
+  theme: ThemeId;
+  onThemeChange: (t: ThemeId) => void;
+  skin: VoxplySkin | null;
+  onSkinChange: (skin: VoxplySkin) => void;
   profiles: NamedProfile[];
   defaultProfileId: string | null;
   mentionPingEnabled?: boolean;
@@ -36,11 +40,12 @@ const TABS: { id: SettingsTab; label: string }[] = [
   { id: "account", label: "Account" },
 ];
 
-const THEMES: { value: "calm" | "classic" | "linear" | "light"; label: string }[] = [
+const THEMES: { value: ThemeId; label: string }[] = [
   { value: "calm", label: "Calm" },
   { value: "classic", label: "Classic" },
   { value: "linear", label: "Linear" },
   { value: "light", label: "Light" },
+  { value: "custom", label: "Custom" },
 ];
 
 const NOTIF_LEVELS: { value: NotifLevel; label: string }[] = [
@@ -260,6 +265,9 @@ export function SettingsPage(props: SettingsPageProps) {
                   </button>
                 ))}
               </div>
+              {props.theme === "custom" && (
+                <SkinEditor skin={props.skin ?? makeSeed("calm")} onChange={props.onSkinChange} />
+              )}
             </div>
           </section>
         )}
