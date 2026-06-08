@@ -10,17 +10,19 @@ import {
   forumDeleteReply,
   forumPinPost,
   forumLockPost,
+  markPostRead,
 } from "../platform/commands/forum";
 
 interface Props {
   postId: string;
+  channelId: string;
   publicKey: string | null;
   isAdmin: boolean;
   canManagePosts: boolean;
   onBack: () => void;
 }
 
-export function ForumPostDetail({ postId, publicKey, isAdmin, canManagePosts, onBack }: Props) {
+export function ForumPostDetail({ postId, channelId, publicKey, isAdmin, canManagePosts, onBack }: Props) {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +44,13 @@ export function ForumPostDetail({ postId, publicKey, isAdmin, canManagePosts, on
 
   useEffect(() => {
     setLoading(true);
-    reload().finally(() => setLoading(false));
+    reload().finally(() => {
+      setLoading(false);
+      // Fire-and-forget: mark this post as read once loaded.
+      void markPostRead(channelId, postId).catch(() => undefined);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId]);
+  }, [postId, channelId]);
 
   async function handleSendReply() {
     if (!post || !replyBody.trim()) return;

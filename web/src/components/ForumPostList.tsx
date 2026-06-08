@@ -92,6 +92,9 @@ function ForumPostRow({ post, onClick }: { post: PostSummary; onClick: () => voi
         </span>
         <span className="forum-post-meta muted">
           {formatRelative(post.last_activity_at)} · {post.reply_count} {post.reply_count === 1 ? "reply" : "replies"}
+          {post.unread_reply_count != null && post.unread_reply_count > 0 && (
+            <span className="unread-badge">{post.unread_reply_count} new</span>
+          )}
         </span>
       </div>
     </div>

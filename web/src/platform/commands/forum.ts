@@ -58,3 +58,7 @@ export async function forumPinPost(postId: string, pin: boolean): Promise<void> 
 export async function forumLockPost(postId: string, lock: boolean): Promise<void> {
   await hubFetch(`/posts/${postId}/lock`, { method: lock ? "POST" : "DELETE", body: JSON.stringify({}) });
 }
+
+export async function markPostRead(channelId: string, postId: string): Promise<void> {
+  await hubFetch(`/channels/${channelId}/posts/${postId}/read`, { method: "POST" });
+}

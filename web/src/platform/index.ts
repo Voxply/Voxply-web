@@ -121,6 +121,7 @@ export {
   forumDeleteReply,
   forumPinPost,
   forumLockPost,
+  markPostRead,
 } from "./commands/forum";
 
 export { uploadFile } from "./commands/uploads";

@@ -704,6 +704,7 @@ export interface PostSummary {
   reply_count: number;
   last_activity_at: number;
   is_deleted: boolean;
+  unread_reply_count?: number | null;
 }
 
 export interface ReplyView {
