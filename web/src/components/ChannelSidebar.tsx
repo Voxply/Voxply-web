@@ -326,6 +326,7 @@ export function ChannelSidebar({
                       <SortableChannelItem
                         key={n.node.id}
                         channel={n.node}
+                        activeHubId={activeHubId}
                         selected={selectedChannel?.id === n.node.id}
                         unread={!!activeHubId && !!unreadByChannel[activeHubId]?.[n.node.id]}
                         unreadCount={activeHubId ? Object.keys(unreadByChannel[activeHubId] ?? {}).filter(id => id === n.node.id).length : 0}

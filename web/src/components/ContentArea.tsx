@@ -39,9 +39,10 @@ import { UserListGrouped } from "./UserListGrouped";
 import { MessageEmbeds } from "./MessageEmbeds";
 import { MessageComponents } from "./MessageComponents";
 import { BotCard } from "./BotCard";
+import { EmojiPicker } from "./EmojiPicker";
 import { PinnedMessagesModal } from "./PinnedMessagesModal";
 import { UserProfileCard } from "./UserProfileCard";
-import { pinMessage, unpinMessage } from "@platform";
+import { pinMessage, unpinMessage, hubFetch } from "@platform";
 import { activeSession } from "../platform/session";
 import { LinkPreviewInMessage } from "./LinkPreviewInMessage";
 
@@ -201,6 +202,49 @@ export function ContentArea({
   const pendingAnnouncementsRef = useRef<string[]>([]);
   const [showPinsModal, setShowPinsModal] = useState(false);
   const [profileCardPubkey, setProfileCardPubkey] = useState<string | null>(null);
+
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(() => {
+    if (!selectedChannel) return new Set();
+    try {
+      const raw = localStorage.getItem(`voxply.threads.${selectedChannel.id}`);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+  });
+  const [threadReplies, setThreadReplies] = useState<Record<string, Message[]>>({});
+
+  useEffect(() => {
+    if (!selectedChannel) { setExpandedThreads(new Set()); return; }
+    try {
+      const raw = localStorage.getItem(`voxply.threads.${selectedChannel.id}`);
+      setExpandedThreads(new Set(raw ? JSON.parse(raw) : []));
+    } catch { setExpandedThreads(new Set()); }
+    setThreadReplies({});
+  }, [selectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function persistExpandedThreads(next: Set<string>) {
+    if (!selectedChannel) return;
+    localStorage.setItem(`voxply.threads.${selectedChannel.id}`, JSON.stringify([...next]));
+  }
+
+  async function toggleThread(messageId: string) {
+    if (expandedThreads.has(messageId)) {
+      const next = new Set(expandedThreads);
+      next.delete(messageId);
+      setExpandedThreads(next);
+      persistExpandedThreads(next);
+      return;
+    }
+    if (!selectedChannel) return;
+    try {
+      const res = await hubFetch(`/channels/${selectedChannel.id}/messages?thread_root=${messageId}`);
+      const replies = await res.json() as Message[];
+      setThreadReplies((prev) => ({ ...prev, [messageId]: replies }));
+      const next = new Set(expandedThreads);
+      next.add(messageId);
+      setExpandedThreads(next);
+      persistExpandedThreads(next);
+    } catch { /* silently fail */ }
+  }
 
   useEffect(() => {
     if (document.hidden) return;
@@ -849,6 +893,38 @@ export function ContentArea({
                             {isEphemeral && (
                               <div className="message-ephemeral-label">{t("message.ephemeral")}</div>
                             )}
+                            {(m.reply_count ?? 0) > 0 && (
+                              <div>
+                                <button
+                                  className="thread-chip"
+                                  onClick={() => toggleThread(m.id)}
+                                  aria-expanded={expandedThreads.has(m.id)}
+                                >
+                                  {expandedThreads.has(m.id) ? "▾" : "▸"} {m.reply_count} {m.reply_count === 1 ? "reply" : "replies"}
+                                </button>
+                              </div>
+                            )}
+                            {expandedThreads.has(m.id) && (
+                              <div className="thread-replies">
+                                {(threadReplies[m.id] ?? []).map((reply) => {
+                                  const rSenderUser = users.find((u) => u.public_key === reply.sender);
+                                  const rLabel = rSenderUser?.display_name || reply.sender_name || formatPubkey(reply.sender);
+                                  return (
+                                    <div key={reply.id} className="message" style={{ paddingTop: 2, paddingBottom: 2 }}>
+                                      <span className="message-sender" style={{ color: colorForKey(reply.sender) }}>
+                                        {rLabel}
+                                      </span>
+                                      <span className="message-time" title={formatFullTimestamp(reply.created_at)}>
+                                        {formatRelative(reply.created_at)}
+                                      </span>
+                                      <span className="message-content">
+                                        {reply.content}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </>
                         )}
                       </li>
@@ -911,6 +987,13 @@ export function ContentArea({
                   onChange={(e) => { onAttachFiles(e.target.files); (e.target as HTMLInputElement).value = ""; }}
                 />
               </label>
+              <EmojiPicker
+                hubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url}
+                onPick={(emoji) => {
+                  onInputTextChange(inputText + emoji);
+                  messageInputRef.current?.focus();
+                }}
+              />
               <div style={{ position: "relative", flex: 1 }}>
                 {mentionSuggestions.length > 0 && mentionQuery !== null && (
                   <div className="mention-popup">

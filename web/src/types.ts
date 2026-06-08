@@ -130,6 +130,7 @@ export interface Message {
   embeds?: Embed[];
   components?: ComponentRow[];
   is_bot_sender?: boolean;
+  reply_count?: number;
 }
 
 export type NotifyMode = "all" | "mentions" | "silent";

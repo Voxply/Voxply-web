@@ -46,6 +46,7 @@ import type { HubAdminTab } from "./components/HubAdminPage";
 import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@shared/utils/channels";
 import type { TreeNode } from "@shared/utils/channels";
+import { saveDraft, loadDraft, clearDraft } from "./utils/drafts";
 import type { ScreenShareViewerRef } from "@components/ScreenShareViewer";
 import { listBotCommands } from "@platform";
 import {
@@ -603,7 +604,12 @@ export default function App() {
     setMessages([]);
     setReplyTarget(null);
     setEditingMessageId(null);
-    if (activeHubId) clearUnread(activeHubId, ch.id);
+    if (activeHubId) {
+      clearUnread(activeHubId, ch.id);
+      setInputText(loadDraft(`${activeHubId}/${ch.id}`));
+    } else {
+      setInputText("");
+    }
     markChannelRead(ch.id).catch(() => {});
     try {
       const msgs = await getMessages(ch.id);
@@ -707,6 +713,7 @@ export default function App() {
     if (!selectedChannel || !inputText.trim()) return;
     const text = inputText.trim();
     setInputText("");
+    if (activeHubId) clearDraft(`${activeHubId}/${selectedChannel.id}`);
     try {
       await sendMessage(selectedChannel.id, text, pendingAttachments.length ? pendingAttachments : undefined, replyTarget?.id);
       setPendingAttachments([]);
@@ -1233,7 +1240,10 @@ export default function App() {
         onMessagesScroll={() => {}}
         onSetUserContextMenu={() => {}}
         onSetEditingDraft={setEditingDraft}
-        onInputTextChange={setInputText}
+        onInputTextChange={(v) => {
+          setInputText(v);
+          if (activeHubId && selectedChannel) saveDraft(`${activeHubId}/${selectedChannel.id}`, v);
+        }}
         onKeyDown={handleKeyDown}
         onOpenImage={() => {}}
         onToast={() => {}}
