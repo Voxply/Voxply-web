@@ -27,6 +27,8 @@ import type {
   AllianceInfo,
   AllianceSharedChannel,
   ActiveStream,
+  BlockEntry,
+  IgnoreEntry,
 } from "@shared/types";
 import { HubSidebar } from "@components/HubSidebar";
 import { ChannelSidebar } from "@components/ChannelSidebar";
@@ -48,7 +50,7 @@ import { buildChannelTree } from "@shared/utils/channels";
 import type { TreeNode } from "@shared/utils/channels";
 import { saveDraft, loadDraft, clearDraft } from "./utils/drafts";
 import type { ScreenShareViewerRef } from "@components/ScreenShareViewer";
-import { listBotCommands } from "@platform";
+import { listBotCommands, updateDmBlocks } from "@platform";
 import {
   restorePersistedHubs,
   addHub,
@@ -255,7 +257,38 @@ export default function App() {
     hubNotifyMode, channelNotifyMode, pinnedChannels, collapsedCategories,
     setHubNotifyMode, setCollapsedCategories, effectiveNotifyMode,
   } = useNotificationPrefs();
+  const pubkeyToName = useMemo(() => {
+    const m: Record<string, string | null> = {};
+    for (const u of users) m[u.public_key] = u.display_name ?? null;
+    return m;
+  }, [users]);
   const [blockedUsers, setBlockedUsers] = useState<Set<string>>(new Set());
+  const [ignoredUsers, setIgnoredUsers] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem("voxply.ignoredUsers");
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+
+  function toggleBlockUser(pubkey: string) {
+    setBlockedUsers((prev) => {
+      const next = new Set(prev);
+      if (next.has(pubkey)) next.delete(pubkey);
+      else next.add(pubkey);
+      updateDmBlocks(Array.from(next)).catch(() => {});
+      return next;
+    });
+  }
+
+  function toggleIgnoreUser(pubkey: string) {
+    setIgnoredUsers((prev) => {
+      const next = new Set(prev);
+      if (next.has(pubkey)) next.delete(pubkey);
+      else next.add(pubkey);
+      try { localStorage.setItem("voxply.ignoredUsers", JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
+  }
   const [maxChannelDepth, setMaxChannelDepth] = useState(0);
 
   // === Hub admin ===
@@ -1051,6 +1084,11 @@ export default function App() {
                 loadIdentity().then((rec) => { if (rec) setRecoveryPhrase(seedToPhrase(rec.seed_hex)); })
               );
             }}
+            blocks={Array.from(blockedUsers).map((p) => ({ pubkey: p, since: 0 }))}
+            ignores={Array.from(ignoredUsers).map((p) => ({ pubkey: p, since: 0 }))}
+            onUnblock={toggleBlockUser}
+            onUnignore={toggleIgnoreUser}
+            knownNames={pubkeyToName}
           />
         </div>
       )}

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import type { Hub, NamedProfile, NotifLevel } from "@shared/types";
+import type { Hub, NamedProfile, NotifLevel, BlockEntry, IgnoreEntry } from "@shared/types";
 import { hubFetch, getNotifPref, setNotifPref } from "@platform";
 import { loadIdentity, seedToPhrase } from "@identity/index";
+import { BlockIgnoreSection } from "./BlockIgnoreSection";
 
 export type SettingsTab = "profile" | "notifications" | "appearance" | "account";
 
@@ -21,6 +22,11 @@ interface SettingsPageProps {
   onMentionPingChange?: (v: boolean) => void;
   recoveryPhrase: string | null;
   onShowRecovery: () => void;
+  blocks: BlockEntry[];
+  ignores: IgnoreEntry[];
+  onUnblock: (pubkey: string) => void;
+  onUnignore: (pubkey: string) => void;
+  knownNames: Record<string, string | null>;
 }
 
 const TABS: { id: SettingsTab; label: string }[] = [
@@ -297,6 +303,13 @@ export function SettingsPage(props: SettingsPageProps) {
                 </button>
               )}
             </div>
+            <BlockIgnoreSection
+              blocks={props.blocks}
+              ignores={props.ignores}
+              onUnblock={props.onUnblock}
+              onUnignore={props.onUnignore}
+              knownNames={props.knownNames}
+            />
           </section>
         )}
       </main>
