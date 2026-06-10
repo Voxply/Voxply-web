@@ -3,6 +3,9 @@ import { useUnreadCounts } from "./hooks/useUnreadCounts";
 import { useNotificationPrefs } from "./hooks/useNotificationPrefs";
 import { useTypingIndicators } from "./hooks/useTypingIndicators";
 import { useHubConnection } from "./hooks/useHubConnection";
+import { useHubAdmin } from "./hooks/useHubAdmin";
+import { useSettingsProfile } from "./hooks/useSettingsProfile";
+import { useFarmAdmin } from "./hooks/useFarmAdmin";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { flattenTree, descendantIds, computeDepth } from "@voxply/utils";
@@ -14,21 +17,12 @@ import type {
   User,
   VoiceParticipant,
   Hub,
-  RoleInfo,
-  NamedProfile,
   MeInfo,
-  MemberAdminInfo,
-  BanInfo,
-  InviteInfo,
-  PendingUser,
   InstalledGame,
   Conversation,
   DmMessage,
   AllianceInfo,
   AllianceSharedChannel,
-  ActiveStream,
-  BlockEntry,
-  IgnoreEntry,
 } from "@shared/types";
 import { HubSidebar } from "@components/HubSidebar";
 import { ChannelSidebar } from "@components/ChannelSidebar";
@@ -41,11 +35,8 @@ import { HubAdminPage } from "./components/HubAdminPage";
 import { SearchBar } from "@components/SearchBar";
 import { WelcomeScreenContainer } from "@components/WelcomeScreen";
 import { SettingsPage } from "@components/SettingsPage";
-import type { SettingsTab } from "@components/SettingsPage";
 import { UserContextMenu } from "@components/UserContextMenu";
 import { MobileShell } from "@components/MobileShell";
-import type { HubAdminTab } from "./components/HubAdminPage";
-import type { FarmAdminTab } from "@components/FarmSettingsPage";
 import { buildChannelTree } from "@voxply/utils";
 import type { TreeNode } from "@voxply/utils";
 import { saveDraft, loadDraft, clearDraft } from "./utils/drafts";
@@ -57,14 +48,13 @@ import {
   removeHub,
   setActiveHub,
   listHubs,
-  pingHub,
   previewHubInfo,
   reorderHubs,
   hubFetch,
   HubApiError,
 } from "@platform";
 import type { WsHandlers } from "@platform";
-import { getActiveHubId, getFarmInfo, rawFetch } from "@platform";
+import { getActiveHubId } from "@platform";
 import {
   getMessages,
   sendMessage,
@@ -77,8 +67,6 @@ import {
 
 } from "@platform";
 import {
-  listConversations,
-  createConversation,
   getDmMessages,
   sendDm,
   publishDhKey,
@@ -93,12 +81,7 @@ import {
   saveIdentity,
 } from "@identity/index";
 
-import type { ThemeId, VoxplySkin } from "./skinValidation";
-import { applySkinTokens, clearSkinTokens } from "./skinValidation";
-
 // ---- Types ----
-
-type Theme = ThemeId;
 type View = "channels" | "dms" | "game";
 type HubPreview =
   | { state: "idle" }
@@ -193,10 +176,21 @@ export default function App() {
   // === Identity ===
   const [ready, setReady] = useState<"checking" | "setup" | "ok">("checking");
   const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [theme, setTheme] = useState<Theme>("calm");
-  const [skin, setSkin] = useState<VoxplySkin | null>(null);
+
+  const {
+    showSettings, setShowSettings,
+    settingsTab, setSettingsTab,
+    theme,
+    skin,
+    recoveryPhrase, setRecoveryPhrase,
+    copiedKey,
+    mentionPingEnabled, setMentionPingEnabled,
+    handleSetTheme,
+    handleSkinChange,
+    handleShowRecovery,
+    handleRecoverIdentity,
+    handleCopyKey: handleCopyKeyFn,
+  } = useSettingsProfile(setPublicKey);
 
   // === Hubs ===
   const [hubs, setHubs] = useState<Hub[]>([]);
@@ -293,32 +287,39 @@ export default function App() {
       return next;
     });
   }
-  const [maxChannelDepth, setMaxChannelDepth] = useState(0);
-
   // === Hub admin ===
-  const [showHubAdmin, setShowHubAdmin] = useState(false);
-  const [hubAdminTab, setHubAdminTab] = useState<HubAdminTab>("overview");
-  const [hubAdminName, setHubAdminName] = useState("");
-  const [hubAdminDescription, setHubAdminDescription] = useState("");
-  const [hubAdminIcon, setHubAdminIcon] = useState("");
-  const [hubAdminRequireApproval, setHubAdminRequireApproval] = useState(false);
-  const [hubAdminMinLevel, setHubAdminMinLevel] = useState(0);
-  const [hubAdminMembers, setHubAdminMembers] = useState<MemberAdminInfo[]>([]);
-  const [hubAdminBans, setHubAdminBans] = useState<BanInfo[]>([]);
-  const [hubAdminInvites, setHubAdminInvites] = useState<InviteInfo[]>([]);
-  const [hubAdminPending, setHubAdminPending] = useState<PendingUser[]>([]);
+  const {
+    showHubAdmin, setShowHubAdmin,
+    hubAdminTab, setHubAdminTab,
+    hubAdminName, setHubAdminName,
+    hubAdminDescription, setHubAdminDescription,
+    hubAdminIcon, setHubAdminIcon,
+    hubAdminRequireApproval, setHubAdminRequireApproval,
+    hubAdminMinLevel, setHubAdminMinLevel,
+    hubAdminMembers,
+    hubAdminBans,
+    hubAdminInvites,
+    hubAdminPending,
+    maxChannelDepth, setMaxChannelDepth,
+    openHubAdmin,
+    saveHubAdminSettings,
+    addInvite,
+    removeInvite,
+  } = useHubAdmin({ activeHubId });
 
   // === Profiles ===
-  const [namedProfiles] = useState<NamedProfile[]>([]);
-  const [defaultProfileId] = useState<string | null>(null);
+  const namedProfiles: import("@shared/types").NamedProfile[] = [];
+  const defaultProfileId: string | null = null;
 
   // === Farm admin ===
-  const [showFarmSettings, setShowFarmSettings] = useState(false);
-  const [farmAdminTab, setFarmAdminTab] = useState<FarmAdminTab>("general");
-  const [farmAdminUrl, setFarmAdminUrl] = useState("");
-  const [isFarmAdmin, setIsFarmAdmin] = useState(false);
-  const [showCreateHub, setShowCreateHub] = useState(false);
-  const [knownFarms, setKnownFarms] = useState<{ url: string; name: string }[]>([]);
+  const {
+    showFarmSettings, setShowFarmSettings,
+    farmAdminTab, setFarmAdminTab,
+    farmAdminUrl,
+    isFarmAdmin,
+    showCreateHub, setShowCreateHub,
+    knownFarms,
+  } = useFarmAdmin({ publicKey, hubs });
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // === New web-only UI state ===
@@ -326,16 +327,11 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
     try { return localStorage.getItem("voxply.seenWelcome") !== "1"; } catch { return true; }
   });
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [userContextMenu, setUserContextMenu] = useState<{
     pubkey: string;
     displayName: string | null;
     position: { x: number; y: number };
   } | null>(null);
-  const [mentionPingEnabled, setMentionPingEnabled] = useState<boolean>(() => {
-    try { return localStorage.getItem("voxply.mentionPing") !== "0"; } catch { return true; }
-  });
 
   // === Typing ===
   const selectedChannelIdRef = useRef<string | undefined>(undefined);
@@ -370,38 +366,12 @@ export default function App() {
     });
   }, []);
 
-  useEffect(() => {
-    const raw = localStorage.getItem("voxply:appearance");
-    if (raw) {
-      try {
-        const appearance = JSON.parse(raw) as { slot: string; skin?: VoxplySkin | null };
-        if (appearance.slot === "custom" && appearance.skin) {
-          setSkin(appearance.skin);
-          setTheme("custom");
-        } else if (["calm", "classic", "linear", "light"].includes(appearance.slot)) {
-          setTheme(appearance.slot as ThemeId);
-        }
-      } catch {}
-    }
-  }, []);
-
   function handleIdentityComplete() {
     loadIdentity().then((rec) => {
       if (rec) setPublicKey(publicKeyHex(rec.seed_hex));
       setReady("ok");
     });
   }
-
-  // Theme
-  useEffect(() => {
-    if (theme === "custom" && skin) {
-      document.documentElement.dataset.theme = skin.base;
-      applySkinTokens(skin);
-    } else {
-      clearSkinTokens();
-      document.documentElement.dataset.theme = theme;
-    }
-  }, [theme, skin]);
 
   // Document title (unread count)
   const unreadByHub = useMemo<Record<string, number>>(() => {
@@ -522,33 +492,6 @@ export default function App() {
     void restore();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
-
-  useEffect(() => {
-    if (!publicKey || hubs.length === 0) return;
-    async function checkFarmAdmin() {
-      const farms: { url: string; name: string }[] = [];
-      for (const hub of hubs) {
-        try {
-          const infoRes = await rawFetch(`${hub.hub_url}/info`);
-          const info = await infoRes.json() as { farm_url?: string | null };
-          if (!info.farm_url) continue;
-          const farmUrl = info.farm_url as string;
-          const farmInfo = await getFarmInfo(farmUrl);
-          if (!farms.some((f) => f.url === farmUrl)) {
-            farms.push({ url: farmUrl, name: farmInfo.name });
-          }
-          if (farmInfo.admin_pubkey && farmInfo.admin_pubkey === publicKey) {
-            setIsFarmAdmin(true);
-            setFarmAdminUrl(farmUrl);
-          }
-        } catch {
-          // Not a farmed hub or farm unreachable — skip.
-        }
-      }
-      setKnownFarms(farms);
-    }
-    void checkFarmAdmin();
-  }, [publicKey, hubs.length]);
 
   function clearHubUnread(hubId: string) { clearHubUnreadFn(hubId); }
 
@@ -675,47 +618,6 @@ export default function App() {
       setStickToBottom(true);
       setNewWhileScrolledUp(0);
     } catch {}
-  }
-
-  async function openHubAdmin() {
-    setShowHubAdmin(true);
-    setHubAdminTab("overview");
-    try {
-      const { getHubSettings } = await import("./platform/commands/hubAdmin");
-      const s = await getHubSettings();
-      setHubAdminName(s.hub_name);
-      setHubAdminDescription(s.hub_description ?? "");
-      setHubAdminIcon(s.hub_icon ?? "");
-      setHubAdminRequireApproval(s.require_approval ?? false);
-      setHubAdminMinLevel(s.min_security_level ?? 0);
-      setMaxChannelDepth(s.max_channel_depth ?? 0);
-    } catch { /* prefill with known hub name */ setHubAdminName(hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? ""); }
-    try {
-      const [members, bans, invites, pending] = await Promise.allSettled([
-        hubFetch("/admin/members").then((r) => r.json() as Promise<MemberAdminInfo[]>),
-        hubFetch("/admin/bans").then((r) => r.json() as Promise<BanInfo[]>),
-        hubFetch("/invites").then((r) => r.json() as Promise<InviteInfo[]>),
-        hubFetch("/admin/pending").then((r) => r.json() as Promise<PendingUser[]>),
-      ]);
-      if (members.status === "fulfilled") setHubAdminMembers(members.value);
-      if (bans.status === "fulfilled") setHubAdminBans(bans.value);
-      if (invites.status === "fulfilled") setHubAdminInvites(invites.value);
-      if (pending.status === "fulfilled") setHubAdminPending(pending.value);
-    } catch { /* ignore */ }
-  }
-
-  async function saveHubAdminSettings() {
-    try {
-      const { saveHubSettings } = await import("./platform/commands/hubAdmin");
-      await saveHubSettings({
-        name: hubAdminName,
-        description: hubAdminDescription,
-        icon: hubAdminIcon,
-        require_approval: hubAdminRequireApproval,
-        min_security_level: hubAdminMinLevel,
-        max_channel_depth: maxChannelDepth,
-      });
-    } catch { /* ignore */ }
   }
 
   async function handleChannelDragEnd(event: DragEndEvent) {
@@ -859,29 +761,6 @@ export default function App() {
     setTimeout(() => setVoiceToast(false), 4000);
   }
 
-  // === Misc helpers ===
-
-  function handleCopyKey() {
-    if (!publicKey) return;
-    navigator.clipboard.writeText(publicKey).catch(() => {});
-    setCopiedKey(true);
-    setTimeout(() => setCopiedKey(false), 2000);
-  }
-
-  function handleShowRecovery() {
-    loadIdentity().then((rec) => {
-      if (rec) setRecoveryPhrase(seedToPhrase(rec.seed_hex));
-    });
-  }
-
-  async function handleRecoverIdentity(ph: string) {
-    if (!validatePhrase(ph)) throw new Error("Invalid phrase");
-    const hex = phraseToSeed(ph);
-    await saveIdentity({ id: "main", seed_hex: hex, security_nonce: 0, security_level: 0 });
-    setPublicKey(publicKeyHex(hex));
-    setRecoveryPhrase(null);
-  }
-
   const channelTypingByKey = useMemo(() => {
     if (!selectedChannel) return {} as Record<string, { name: string; ts: number }>;
     const prefix = `${selectedChannel.id}:`;
@@ -1002,23 +881,6 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [hubs, channels, selectedChannel, messageInputRef, unreadByChannel, showKeyboardShortcuts, showSettings, showHubAdmin, showFarmSettings, showCreateHub, showAddHub, showSearchBar, searchOpen]);
 
-  // === Theme handlers ===
-
-  function handleSetTheme(t: ThemeId) {
-    if (t !== "custom") {
-      clearSkinTokens();
-      setSkin(null);
-      localStorage.setItem("voxply:appearance", JSON.stringify({ slot: t, skin: null }));
-    }
-    setTheme(t);
-  }
-
-  function handleSkinChange(s: VoxplySkin) {
-    setSkin(s);
-    setTheme("custom");
-    localStorage.setItem("voxply:appearance", JSON.stringify({ slot: "custom", skin: s }));
-  }
-
   // === Render ===
 
   if (ready === "checking") {
@@ -1105,12 +967,7 @@ export default function App() {
             hubs={hubs}
             publicKey={publicKey}
             copiedKey={copiedKey}
-            onCopyKey={() => {
-              if (!publicKey) return;
-              navigator.clipboard.writeText(publicKey).catch(() => {});
-              setCopiedKey(true);
-              setTimeout(() => setCopiedKey(false), 2000);
-            }}
+            onCopyKey={() => handleCopyKeyFn(publicKey)}
             theme={theme}
             onThemeChange={handleSetTheme}
             skin={skin}
@@ -1124,11 +981,7 @@ export default function App() {
               try { localStorage.setItem("voxply.mentionPing", v ? "1" : "0"); } catch {}
             }}
             recoveryPhrase={recoveryPhrase}
-            onShowRecovery={() => {
-              import("@identity/index").then(({ loadIdentity, seedToPhrase }) =>
-                loadIdentity().then((rec) => { if (rec) setRecoveryPhrase(seedToPhrase(rec.seed_hex)); })
-              );
-            }}
+            onShowRecovery={handleShowRecovery}
             blocks={Array.from(blockedUsers).map((p) => ({ pubkey: p, since: 0 }))}
             ignores={Array.from(ignoredUsers).map((p) => ({ pubkey: p, since: 0 }))}
             onUnblock={toggleBlockUser}
@@ -1371,13 +1224,13 @@ export default function App() {
             isAdmin={isAdmin}
             onCreateInvite={(maxUses, expiresIn) =>
               hubFetch("/invites", { method: "POST", body: JSON.stringify({ max_uses: maxUses, expires_in: expiresIn }) })
-                .then((r) => r.json() as Promise<InviteInfo>)
-                .then((inv) => setHubAdminInvites((prev) => [...prev, inv]))
+                .then((r) => r.json() as Promise<import("@shared/types").InviteInfo>)
+                .then((inv) => addInvite(inv))
                 .catch(() => {})
             }
             onRevokeInvite={(code) => {
               hubFetch(`/invites/${code}`, { method: "DELETE" }).catch(() => {});
-              setHubAdminInvites((prev) => prev.filter((i) => i.code !== code));
+              removeInvite(code);
             }}
             channels={channels}
           />
