@@ -7,7 +7,7 @@ import type {
   PendingUser,
   RoleInfo,
 } from "../types";
-import { formatPubkey, formatRelative } from "../utils/format";
+import { formatPubkey, formatRelative } from "@voxply/utils";
 import { ServerTagsSection } from "./ServerTagsSection";
 import { GamesAdminSection } from "./GamesAdminSection";
 import { CertificationsSection } from "./CertificationsSection";

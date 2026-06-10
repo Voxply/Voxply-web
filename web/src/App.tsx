@@ -5,7 +5,7 @@ import { useTypingIndicators } from "./hooks/useTypingIndicators";
 import { useHubConnection } from "./hooks/useHubConnection";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { flattenTree, descendantIds, computeDepth } from "@shared/utils/channels";
+import { flattenTree, descendantIds, computeDepth } from "@voxply/utils";
 import type {
   Channel,
   Attachment,
@@ -46,8 +46,8 @@ import { UserContextMenu } from "@components/UserContextMenu";
 import { MobileShell } from "@components/MobileShell";
 import type { HubAdminTab } from "./components/HubAdminPage";
 import type { FarmAdminTab } from "@components/FarmSettingsPage";
-import { buildChannelTree } from "@shared/utils/channels";
-import type { TreeNode } from "@shared/utils/channels";
+import { buildChannelTree } from "@voxply/utils";
+import type { TreeNode } from "@voxply/utils";
 import { saveDraft, loadDraft, clearDraft } from "./utils/drafts";
 import type { ScreenShareViewerRef } from "@components/ScreenShareViewer";
 import { listBotCommands, updateDmBlocks } from "@platform";

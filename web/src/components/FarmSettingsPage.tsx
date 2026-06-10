@@ -16,7 +16,7 @@ import type {
   FarmUserEntry,
   FarmCreationPolicy,
 } from "../types";
-import { formatPubkey, formatRelative } from "../utils/format";
+import { formatPubkey, formatRelative } from "@voxply/utils";
 
 export type FarmAdminTab = "general" | "hubs" | "users";
 

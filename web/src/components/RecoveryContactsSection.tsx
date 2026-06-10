@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { RecoveryRotationRequest } from "../types";
-import { formatPubkey } from "../utils/format";
+import { formatPubkey } from "@voxply/utils";
 import {
   getRecoveryContacts,
   setRecoveryContacts,

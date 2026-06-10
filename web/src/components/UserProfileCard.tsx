@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { UserProfile } from "../types";
 import { getUserProfile } from "@platform";
 import { Avatar } from "./Avatar";
-import { formatRelative } from "../utils/format";
+import { formatRelative } from "@voxply/utils";
 
 interface Props {
   pubkey: string;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import type { PinnedMessage } from "../types";
 import { getPins } from "@platform";
-import { formatRelative } from "../utils/format";
+import { formatRelative } from "@voxply/utils";
 import { FocusTrap } from "./FocusTrap";
 
 interface Props {

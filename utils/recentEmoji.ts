@@ -1,7 +1,5 @@
-// Persisted "recently used" emoji list backed by localStorage.
-// Capped at RECENT_EMOJI_MAX so the picker's recents row stays compact.
-
-import { RECENT_EMOJI_KEY, RECENT_EMOJI_MAX } from "../constants";
+const RECENT_EMOJI_KEY = "voxply.recentEmojis";
+const RECENT_EMOJI_MAX = 8;
 
 export function loadRecentEmojis(): string[] {
   try {

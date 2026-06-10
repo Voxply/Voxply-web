@@ -1,5 +1,19 @@
-// Pure channel-tree helpers. No React, no Tauri.
-import type { Channel } from "../types";
+export interface Channel {
+  id: string;
+  name: string;
+  created_by: string;
+  parent_id: string | null;
+  is_category: boolean;
+  channel_type?: "text" | "forum" | "banner";
+  banner_url?: string | null;
+  banner_file_id?: string | null;
+  display_order: number;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+  custom_icon_svg: string | null;
+  created_at: number;
+}
 
 export interface TreeNode {
   node: Channel;
@@ -24,10 +38,6 @@ export function buildChannelTree(channels: Channel[]): TreeNode[] {
   return buildChildren(null, 0);
 }
 
-/**
- * DFS-flatten a tree into a linear list with depth annotations.
- * This is what the single flat SortableContext consumes.
- */
 export function flattenTree(tree: TreeNode[]): FlatNode[] {
   const result: FlatNode[] = [];
   function walk(nodes: TreeNode[]) {
@@ -40,10 +50,6 @@ export function flattenTree(tree: TreeNode[]): FlatNode[] {
   return result;
 }
 
-/**
- * Returns the depth a new item would sit at if placed under parentId.
- * Depth 0 = root-level (no parent). Uses the flat channels array.
- */
 export function computeDepth(channels: Channel[], parentId: string | null): number {
   if (parentId === null) return 0;
   const parent = channels.find((c) => c.id === parentId);
@@ -51,10 +57,6 @@ export function computeDepth(channels: Channel[], parentId: string | null): numb
   return 1 + computeDepth(channels, parent.parent_id ?? null);
 }
 
-/**
- * Returns the set of all descendant IDs for a given node id.
- * Used for client-side cycle detection — drops onto these IDs are forbidden.
- */
 export function descendantIds(tree: TreeNode[], id: string): Set<string> {
   function findNode(nodes: TreeNode[]): TreeNode | null {
     for (const n of nodes) {
