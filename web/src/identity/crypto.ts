@@ -57,6 +57,23 @@ export function dhKeySigningBytes(pubkey: string, dhPubkeyHex: string): Uint8Arr
   return concat(prefix, writeStr(pubkey), writeStr(dhPubkeyHex));
 }
 
+// Signing bytes for a 1:1 encrypted DM envelope.
+// Matches dm_envelope_signing_bytes() in voxply-identity/src/wire.rs.
+export function dmEnvelopeSigningBytes(
+  convId: string,
+  ciphertextHex: string,
+  nonceHex: string,
+  dhPubkeyHex: string,
+): Uint8Array {
+  return concat(
+    new TextEncoder().encode("voxply/dm-ciphertext/v1\0"),
+    writeStr(convId),
+    writeStr(ciphertextHex),
+    writeStr(nonceHex),
+    writeStr(dhPubkeyHex),
+  );
+}
+
 // Ed25519 sign — synchronous via @noble/curves.
 export function signBytes(msg: Uint8Array, seedHex: string): string {
   const sig = ed25519.sign(msg, hexToBytes(seedHex));
@@ -99,13 +116,7 @@ export function encryptDm(
   const seedHex = bytesToHex(mySigningSeed);
   const senderPubkey = publicKeyHex(seedHex);
 
-  const sigMsg = concat(
-    new TextEncoder().encode("voxply/dm-ciphertext/v1\0"),
-    writeStr(convId),
-    writeStr(ciphertextHex),
-    writeStr(nonceHex),
-    writeStr(dhPubkeyHex),
-  );
+  const sigMsg = dmEnvelopeSigningBytes(convId, ciphertextHex, nonceHex, dhPubkeyHex);
 
   return {
     sender_pubkey: senderPubkey,
