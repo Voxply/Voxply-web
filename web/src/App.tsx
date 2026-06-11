@@ -336,9 +336,12 @@ export default function App() {
   // === Typing ===
   const selectedChannelIdRef = useRef<string | undefined>(undefined);
   const selectedConvIdRef = useRef<string | undefined>(undefined);
+  const publicKeyRef = useRef<string | null>(publicKey);
+  publicKeyRef.current = publicKey;
   const { typingByKey, dmTypingByKey, receiveTyping, pingTyping, pingDmTyping } = useTypingIndicators(
     () => selectedChannelIdRef.current,
     () => selectedConvIdRef.current,
+    () => publicKeyRef.current,
   );
 
   // === Refs ===

@@ -52,8 +52,8 @@ export async function addReaction(
   emoji: string,
 ): Promise<void> {
   await hubFetch(
-    `/channels/${channel_id}/messages/${message_id}/reactions/${encodeURIComponent(emoji)}`,
-    { method: "PUT" },
+    `/channels/${channel_id}/messages/${message_id}/reactions`,
+    { method: "POST", body: JSON.stringify({ emoji }) },
   );
 }
 
@@ -100,12 +100,12 @@ export async function markChannelRead(channel_id: string): Promise<void> {
   await hubFetch(`/channels/${channel_id}/read`, { method: "POST" });
 }
 
-export function sendTypingEvent(channel_id: string): void {
+export function sendTypingEvent(channel_id: string, typing: boolean): void {
   const s = activeSession();
-  s.ws?.send({ type: "typing_start", channel_id });
+  s.ws?.send({ type: "typing", channel_id, typing });
 }
 
-export function sendDmTypingEvent(conversation_id: string): void {
+export function sendDmTypingEvent(conversation_id: string, typing: boolean): void {
   const s = activeSession();
-  s.ws?.send({ type: "dm_typing", conversation_id });
+  s.ws?.send({ type: "dm_typing", conversation_id, typing });
 }
