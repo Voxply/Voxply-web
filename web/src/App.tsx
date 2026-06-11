@@ -837,14 +837,14 @@ export default function App() {
   }, [dmTypingByKey, selectedConversation]);
 
   const isAdmin = useMemo(
-    () => meInfo?.roles?.some((r) => r.permissions?.includes("manage_hub")) ?? false,
+    () => meInfo?.roles?.some((r) => r.permissions?.includes("admin")) ?? false,
     [meInfo],
   );
 
   const myRoles = useMemo(() => meInfo?.roles ?? [], [meInfo]);
 
   const canManageGames = useMemo(
-    () => myRoles.some((r) => r.permissions?.includes("manage_games") || r.permissions?.includes("manage_hub")),
+    () => myRoles.some((r) => r.permissions?.includes("manage_games") || r.permissions?.includes("admin")),
     [myRoles],
   );
 
