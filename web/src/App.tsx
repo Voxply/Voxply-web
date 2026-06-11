@@ -41,7 +41,7 @@ import { buildChannelTree } from "@voxply/utils";
 import type { TreeNode } from "@voxply/utils";
 import { saveDraft, loadDraft, clearDraft } from "./utils/drafts";
 import type { ScreenShareViewerRef } from "@components/ScreenShareViewer";
-import { listBotCommands, updateDmBlocks } from "@platform";
+import { listBotCommands, updateDmBlocks, fetchVoiceRoster } from "@platform";
 import {
   restorePersistedHubs,
   addHub,
@@ -456,9 +456,33 @@ export default function App() {
       }
     },
     onVoiceState: (raw) => {
-      const m = raw as { channel_id?: string; participants?: VoiceParticipant[] };
-      if (m.channel_id && m.participants) {
-        setVoicePartByChannel((prev) => ({ ...prev, [m.channel_id!]: m.participants! }));
+      const m = raw as { type?: string; channel_id?: string; participants?: VoiceParticipant[]; participant?: VoiceParticipant; public_key?: string };
+      if (!m.channel_id) return;
+      const channelId = m.channel_id;
+
+      if (m.type === "voice_participant_left") {
+        if (!m.public_key) return;
+        const leftKey = m.public_key;
+        setVoicePartByChannel((prev) => {
+          const existing = prev[channelId];
+          if (!existing) return prev;
+          const next = existing.filter((p) => p.public_key !== leftKey);
+          if (next.length === 0) {
+            const { [channelId]: _, ...rest } = prev;
+            return rest;
+          }
+          return { ...prev, [channelId]: next };
+        });
+      } else if (m.type === "voice_participant_joined") {
+        if (!m.participant) return;
+        const joined = m.participant;
+        setVoicePartByChannel((prev) => {
+          const existing = prev[channelId] ?? [];
+          if (existing.some((p) => p.public_key === joined.public_key)) return prev;
+          return { ...prev, [channelId]: [...existing, joined] };
+        });
+      } else if (m.participants) {
+        setVoicePartByChannel((prev) => ({ ...prev, [channelId]: m.participants! }));
       }
     },
     onTyping: (raw) => {
@@ -501,7 +525,7 @@ export default function App() {
     if (loadingHub.current) return;
     loadingHub.current = true;
     try {
-      const [ch, usr, me, convs, games, alliances, cmds] = await Promise.allSettled([
+      const [ch, usr, me, convs, games, alliances, cmds, voiceRoster] = await Promise.allSettled([
         hubFetch("/channels").then((r) => r.json() as Promise<Channel[]>),
         hubFetch("/users").then((r) => r.json() as Promise<User[]>),
         hubFetch("/me").then((r) => r.json() as Promise<MeInfo>),
@@ -509,6 +533,7 @@ export default function App() {
         hubFetch("/hub/games").then((r) => r.json() as Promise<InstalledGame[]>),
         hubFetch("/alliances").then((r) => r.json() as Promise<AllianceInfo[]>).catch(() => [] as AllianceInfo[]),
         listBotCommands().catch(() => [] as Array<{ command: string; description: string; bot_name: string }>),
+        fetchVoiceRoster().catch(() => ({} as Record<string, VoiceParticipant[]>)),
       ]);
       if (ch.status === "fulfilled") setChannels(ch.value);
       if (usr.status === "fulfilled") setUsers(usr.value);
@@ -517,6 +542,7 @@ export default function App() {
       if (games.status === "fulfilled") setInstalledGames(games.value);
       if (alliances.status === "fulfilled") setUserAlliances(alliances.value);
       if (cmds.status === "fulfilled") setSlashCommands(cmds.value);
+      if (voiceRoster.status === "fulfilled") setVoicePartByChannel(voiceRoster.value);
       const hubId = getActiveHubId();
       if (hubId) {
         getUnreadCounts().then((counts) => seedUnreadFromServer(hubId, counts)).catch(() => {});

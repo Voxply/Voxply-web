@@ -143,3 +143,5 @@ export {
 } from "./commands/events";
 
 export { getNotifPref, setNotifPref } from "./notifPrefs";
+
+export { fetchVoiceRoster } from "./commands/voice";

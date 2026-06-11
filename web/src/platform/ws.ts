@@ -70,7 +70,7 @@ export class HubWebSocket {
       this.handlers.onDm?.(msg);
     } else if (type === "typing" || type === "dm_typing") {
       this.handlers.onTyping?.(msg);
-    } else if (type === "voice_joined" || type === "voice_participant_joined" || type === "voice_participant_left" || type === "voice_participant_speaking") {
+    } else if (type === "voice_joined" || type === "voice_participant_joined" || type === "voice_participant_left" || type === "voice_participant_speaking" || type === "voice_roster_update") {
       this.handlers.onVoiceState?.(msg);
     } else if (
       type === "screen_share_started" ||
