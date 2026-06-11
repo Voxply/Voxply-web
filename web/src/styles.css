@@ -1921,6 +1921,37 @@ select,
   background: var(--danger-hover);
 }
 
+.btn-voice-header {
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: var(--text-sm);
+  font-family: var(--font-stack);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-3);
+  white-space: nowrap;
+}
+
+.btn-voice-join {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-voice-join:hover {
+  opacity: 0.85;
+}
+
+.btn-voice-leave {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-voice-leave:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
 /* Sidebar voice participants — nested under each channel that has
    anyone in voice. Indented under the channel name so the tree shape
    matches the room/people relationship. */
@@ -4137,6 +4168,29 @@ select:focus-visible {
   margin-top: var(--space-1);
 }
 
+.thread-chip {
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  border: none;
+  display: inline-block;
+}
+
+.thread-chip:hover {
+  background: var(--surface);
+}
+
+.thread-replies {
+  margin-left: 24px;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+  margin-top: 4px;
+}
+
 /* ============================================================
    RICH EMBEDS
    ============================================================ */
@@ -4488,6 +4542,57 @@ a.embed-title:hover {
 
 .mention-popup-name {
   font-weight: var(--weight-medium);
+}
+
+.slash-command-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  margin-bottom: 4px;
+}
+
+.slash-command-item {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.slash-command-item:hover,
+.slash-command-item.selected {
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.slash-command-name {
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.slash-command-desc {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.slash-command-bot {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ============================================================

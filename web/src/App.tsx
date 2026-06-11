@@ -892,7 +892,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
+    <div className="main-layout">
       <div
         role="alert"
         aria-live="assertive"
