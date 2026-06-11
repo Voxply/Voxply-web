@@ -395,6 +395,9 @@ export default function App() {
   const activeHubIdRef = useRef<string | null>(null);
   useEffect(() => { activeHubIdRef.current = activeHubId; }, [activeHubId]);
 
+  const hubsRef = useRef<Hub[]>([]);
+  useEffect(() => { hubsRef.current = hubs; }, [hubs]);
+
   const selectedChannelRef = useRef<Channel | null>(null);
   useEffect(() => {
     selectedChannelRef.current = selectedChannel;
@@ -407,27 +410,46 @@ export default function App() {
     selectedConvIdRef.current = selectedConversation?.id;
   }, [selectedConversation]);
 
+  // Toast state for hub error messages (W6)
+  const [hubErrorToast, setHubErrorToast] = useState<string | null>(null);
+  const hubErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showHubError(msg: string) {
+    if (hubErrorTimerRef.current) clearTimeout(hubErrorTimerRef.current);
+    setHubErrorToast(msg);
+    hubErrorTimerRef.current = setTimeout(() => setHubErrorToast(null), 5000);
+  }
+
   const stableHandlers: WsHandlers = useMemo(() => ({
     onMessage: (raw) => {
       const m = raw as Record<string, unknown>;
       const type = m.type as string;
+      const msgHubId = m._hub_id as string | undefined;
+      const activeHub = activeHubIdRef.current;
       if (type === "message") {
         const msg = m.message as Message | undefined;
         if (!msg) return;
-        setMessages((prev) => prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]);
-        const hub = activeHubIdRef.current;
         const selCh = selectedChannelRef.current;
-        if (hub && m.channel_id && m.channel_id !== selCh?.id) {
-          bumpUnread(hub, m.channel_id as string);
+        const isActiveHub = msgHubId === activeHub;
+        const isActiveChannel = isActiveHub && m.channel_id === selCh?.id;
+        if (isActiveChannel) {
+          setMessages((prev) => prev.some((x) => x.id === msg.id) ? prev : [...prev, msg]);
+          setStickToBottom((stick) => { if (stick) setNewWhileScrolledUp(0); else setNewWhileScrolledUp((n) => n + 1); return stick; });
+        } else if (msgHubId && m.channel_id) {
+          bumpUnread(msgHubId, m.channel_id as string);
         }
-        setStickToBottom((stick) => { if (stick) setNewWhileScrolledUp(0); else setNewWhileScrolledUp((n) => n + 1); return stick; });
       } else if (type === "message_edited") {
+        if (msgHubId !== activeHub) return;
+        if (m.channel_id !== selectedChannelRef.current?.id) return;
         const msg = m.message as Message | undefined;
         if (msg) setMessages((prev) => prev.map((x) => x.id === msg.id ? msg : x));
       } else if (type === "message_deleted") {
+        if (msgHubId !== activeHub) return;
+        if (m.channel_id !== selectedChannelRef.current?.id) return;
         const id = m.message_id as string;
         if (id) setMessages((prev) => prev.filter((x) => x.id !== id));
       } else if (type === "reactions_updated") {
+        if (msgHubId !== activeHub) return;
+        if (m.channel_id !== selectedChannelRef.current?.id) return;
         const msgId = m.message_id as string | undefined;
         const reactions = m.reactions as Message["reactions"] | undefined;
         if (msgId && reactions) {
@@ -459,7 +481,8 @@ export default function App() {
       }
     },
     onVoiceState: (raw) => {
-      const m = raw as { type?: string; channel_id?: string; participants?: VoiceParticipant[]; participant?: VoiceParticipant; public_key?: string };
+      const m = raw as { type?: string; channel_id?: string; participants?: VoiceParticipant[]; participant?: VoiceParticipant; public_key?: string; _hub_id?: string };
+      if (m._hub_id !== activeHubIdRef.current) return;
       if (!m.channel_id) return;
       const channelId = m.channel_id;
 
@@ -492,12 +515,15 @@ export default function App() {
       receiveTyping(raw as Record<string, unknown>);
     },
     onScreenShare: () => {},
-    onStatusChange: (connected) => {
-      const id = activeHubIdRef.current;
-      if (id) {
-        const hubName = hubs.find((h) => h.hub_id === id)?.hub_name ?? "hub";
-        handleStatusChange(id, hubName, connected, setAssertiveAnnouncement);
-      }
+    onStatusChange: (connected, hubId) => {
+      const hubName = hubsRef.current.find((h) => h.hub_id === hubId)?.hub_name ?? "hub";
+      handleStatusChange(hubId, hubName, connected, setAssertiveAnnouncement);
+    },
+    onError: (raw) => {
+      const m = raw as Record<string, unknown>;
+      if (m._hub_id !== activeHubIdRef.current) return;
+      const message = (m.message as string | undefined) ?? "An error occurred on the hub.";
+      showHubError(message);
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
@@ -948,6 +974,19 @@ export default function App() {
           }}
         >
           Voice is not available in the browser client. Open Voxply on your desktop to join.
+        </div>
+      )}
+
+      {hubErrorToast && (
+        <div
+          style={{
+            position: "fixed", top: 52, left: "50%", transform: "translateX(-50%)",
+            background: "var(--surface)", border: "1px solid var(--danger, #e05252)",
+            borderRadius: "var(--r-md)", padding: "8px 16px", zIndex: 9999,
+            fontSize: "var(--text-sm)", color: "var(--danger, #e05252)",
+          }}
+        >
+          {hubErrorToast}
         </div>
       )}
 

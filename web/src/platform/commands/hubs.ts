@@ -104,7 +104,7 @@ export async function addHub(
   const rememberMe = opts?.rememberMe ?? false;
   saveToken(info.public_key, token, rememberMe);
 
-  const ws = new HubWebSocket(url, token, handlers);
+  const ws = new HubWebSocket(url, token, info.public_key, handlers);
 
   const session: HubSession = {
     hub_id: info.public_key,
@@ -205,7 +205,7 @@ export async function reauthorizeHub(
   );
 
   s.ws?.close();
-  const ws = new HubWebSocket(s.hub_url, token, handlers);
+  const ws = new HubWebSocket(s.hub_url, token, hub_id, handlers);
   setSession(hub_id, { ...s, token, ws });
 }
 
@@ -266,7 +266,7 @@ export async function restorePersistedHubs(handlers: WsHandlers): Promise<Hub[]>
         saveToken(hub.hub_id, token, hub.remember_token);
       }
 
-      const ws = new HubWebSocket(hub.hub_url, token, handlers);
+      const ws = new HubWebSocket(hub.hub_url, token, hub.hub_id, handlers);
       setSession(hub.hub_id, {
         hub_id: hub.hub_id,
         hub_url: hub.hub_url,

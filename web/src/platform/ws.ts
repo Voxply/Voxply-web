@@ -4,9 +4,10 @@ export interface WsHandlers {
   onTyping?: (e: object) => void;
   onVoiceState?: (e: object) => void;
   onScreenShare?: (e: object) => void;
-  onStatusChange?: (connected: boolean) => void;
+  onStatusChange?: (connected: boolean, hubId: string) => void;
   onPin?: (e: object) => void;
   onPoll?: (e: object) => void;
+  onError?: (e: object) => void;
 }
 
 const BACKOFF_INITIAL = 1000;
@@ -21,6 +22,7 @@ export class HubWebSocket {
   constructor(
     private hub_url: string,
     private token: string,
+    private hub_id: string,
     private handlers: WsHandlers,
   ) {
     this.connect();
@@ -39,7 +41,7 @@ export class HubWebSocket {
 
     this.ws.onopen = () => {
       this.backoff = BACKOFF_INITIAL;
-      this.handlers.onStatusChange?.(true);
+      this.handlers.onStatusChange?.(true, this.hub_id);
     };
 
     this.ws.onmessage = (ev) => {
@@ -53,7 +55,7 @@ export class HubWebSocket {
     };
 
     this.ws.onclose = () => {
-      this.handlers.onStatusChange?.(false);
+      this.handlers.onStatusChange?.(false, this.hub_id);
       if (!this.closed) this.scheduleReconnect();
     };
 
@@ -63,25 +65,28 @@ export class HubWebSocket {
   }
 
   private dispatch(msg: Record<string, unknown>): void {
-    const type = msg.type as string | undefined;
+    const tagged: Record<string, unknown> = { ...msg, _hub_id: this.hub_id };
+    const type = tagged.type as string | undefined;
     if (type === "message" || type === "message_edited" || type === "message_deleted" || type === "reactions_updated") {
-      this.handlers.onMessage?.(msg);
+      this.handlers.onMessage?.(tagged);
     } else if (type === "dm") {
-      this.handlers.onDm?.(msg);
+      this.handlers.onDm?.(tagged);
     } else if (type === "typing" || type === "dm_typing") {
-      this.handlers.onTyping?.(msg);
+      this.handlers.onTyping?.(tagged);
     } else if (type === "voice_joined" || type === "voice_participant_joined" || type === "voice_participant_left" || type === "voice_participant_speaking" || type === "voice_roster_update") {
-      this.handlers.onVoiceState?.(msg);
+      this.handlers.onVoiceState?.(tagged);
     } else if (
       type === "screen_share_started" ||
       type === "screen_share_chunk" ||
       type === "screen_share_stopped"
     ) {
-      this.handlers.onScreenShare?.(msg);
+      this.handlers.onScreenShare?.(tagged);
     } else if (type === "message_pinned" || type === "message_unpinned") {
-      this.handlers.onPin?.(msg);
+      this.handlers.onPin?.(tagged);
     } else if (type === "poll_created" || type === "poll_updated" || type === "poll_deleted") {
-      this.handlers.onPoll?.(msg);
+      this.handlers.onPoll?.(tagged);
+    } else if (type === "error") {
+      this.handlers.onError?.(tagged);
     }
   }
 

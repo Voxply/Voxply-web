@@ -10,6 +10,9 @@ export class HubApiError extends Error {
 async function checkResponse(res: Response): Promise<Response> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    if (import.meta.env.DEV && res.status >= 400 && res.status < 500) {
+      console.warn(`[hubFetch] ${res.status} ${res.url} — ${text || res.statusText}`);
+    }
     throw new HubApiError(res.status, text || res.statusText);
   }
   return res;
