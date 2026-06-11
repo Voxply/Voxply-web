@@ -16,35 +16,21 @@ import type {
 } from "../types";
 import { GamePicker } from "./GamePicker";
 import { GameModal } from "./GameModal";
-import { GamepadIcon } from "./Icons";
+import { UserListGrouped } from "./UserListGrouped";
+import { BotCard } from "./BotCard";
+import { UserProfileCard } from "./UserProfileCard";
+import { PinnedMessagesModal } from "./PinnedMessagesModal";
+import { hubFetch } from "@platform";
+import { activeSession } from "../platform/session";
 import { ScreenShareViewer } from "./ScreenShareViewer";
 import type { ScreenShareViewerRef } from "./ScreenShareViewer";
-import {
-  formatPubkey,
-  meAction,
-  mentionsName,
-  colorForKey,
-  dayKey,
-  formatDayLabel,
-  formatFullTimestamp,
-  formatRelative,
-} from "@voxply/utils";
-import { Avatar } from "./Avatar";
-import { TypingIndicator } from "./TypingIndicator";
-import { MessageReactions } from "./MessageReactions";
-import { ReactionPicker } from "./ReactionPicker";
-import { PendingAttachments, MessageAttachments } from "./Attachments";
-import { MessageContent } from "./MessageContent";
-import { UserListGrouped } from "./UserListGrouped";
-import { MessageEmbeds } from "./MessageEmbeds";
-import { MessageComponents } from "./MessageComponents";
-import { BotCard } from "./BotCard";
-import { EmojiPicker } from "./EmojiPicker";
-import { PinnedMessagesModal } from "./PinnedMessagesModal";
-import { UserProfileCard } from "./UserProfileCard";
-import { pinMessage, unpinMessage, hubFetch } from "@platform";
-import { activeSession } from "../platform/session";
-import { LinkPreviewInMessage } from "./LinkPreviewInMessage";
+import { ReconnectBanner } from "./content/ReconnectBanner";
+import { DmView } from "./content/DmView";
+import { ForumView } from "./content/ForumView";
+import { ChannelHeader } from "./content/ChannelHeader";
+import { ChannelMessageList } from "./content/ChannelMessageList";
+import { ChannelComposer } from "./content/ChannelComposer";
+import { AllianceView } from "./content/AllianceView";
 
 interface SelectedAllianceChannel {
   alliance_id: string;
@@ -286,6 +272,14 @@ export function ContentArea({
     setBotCard({ pubkey, rect });
   }, []);
 
+  function handleAuthorClick(pubkey: string) {
+    if (onOpenUserProfile) {
+      onOpenUserProfile(pubkey);
+    } else {
+      setProfileCardPubkey(pubkey);
+    }
+  }
+
   function handleSlashInputChange(value: string) {
     onInputTextChange(value);
     if (value.startsWith("/") && !value.includes(" ")) {
@@ -386,28 +380,7 @@ export function ContentArea({
     // Actual WS send is handled inside MessageComponents via platform session.
   }
 
-  async function handlePinToggle(messageId: string) {
-    if (!selectedChannel) return;
-    const isPinned = pinnedMessageIds.has(messageId);
-    try {
-      if (isPinned) {
-        await unpinMessage(selectedChannel.id, messageId);
-      } else {
-        await pinMessage(selectedChannel.id, messageId);
-      }
-      onPinToggle?.(messageId, !isPinned);
-    } catch {
-      // pin failed silently
-    }
-  }
-
-  function handleAuthorClick(pubkey: string) {
-    if (onOpenUserProfile) {
-      onOpenUserProfile(pubkey);
-    } else {
-      setProfileCardPubkey(pubkey);
-    }
-  }
+  const activeHub = hubs.find((h) => h.hub_id === activeHubId);
 
   return (
     <>
@@ -422,675 +395,155 @@ export function ContentArea({
       </div>
       <main className="content">
         {activeHubId && hubConnected[activeHubId] === false && (
-          <div className="reconnect-banner">
-            <span>{reconnectingHubs[activeHubId] ? t("reconnect.reconnecting") : t("reconnect.disconnected")}</span>
-            <button
-              className="btn-small"
-              onClick={onReconnect}
-              disabled={!!reconnectingHubs[activeHubId]}
-            >
-              {reconnectingHubs[activeHubId] ? t("reconnect.working") : t("reconnect.button")}
-            </button>
-          </div>
+          <ReconnectBanner
+            reconnecting={!!reconnectingHubs[activeHubId]}
+            onReconnect={onReconnect}
+          />
         )}
 
         {view === "dms" ? (
           selectedConversation ? (
-            <>
-              <div className="channel-header">
-                <h3>
-                  @{" "}
-                  {selectedConversation.members
-                    .filter((m) => m !== publicKey)
-                    .map((k) => {
-                      const u = users.find((u) => u.public_key === k);
-                      return u?.display_name || k.slice(0, 12);
-                    })
-                    .join(", ")}
-                </h3>
-              </div>
-              {selectedConversation.conv_type === "group" && (
-                <div className="dm-group-banner">
-                  Group DMs are not end-to-end encrypted yet.
-                </div>
-              )}
-              <div className="messages">
-                {(dmMessages[selectedConversation.id] || [])
-                  .filter((m) => !blockedUsers.has(m.sender))
-                  .map((m, i) => {
-                    const senderLabel =
-                      users.find((u) => u.public_key === m.sender)?.display_name ||
-                      m.sender_name ||
-                      formatPubkey(m.sender);
-                    const showFailed = m.delivery_failed === true && m.sender === publicKey;
-                    const failedBadge = showFailed ? (
-                      <span
-                        className="dm-delivery-failed"
-                        title="The sender's hub couldn't deliver this to one or more recipients after retries."
-                      >
-                        {t("dm.delivery_failed")}
-                      </span>
-                    ) : null;
-                    const lockIcon = m.is_encrypted
-                      ? <span className="dm-lock-icon" title={t("dm.encrypted")}>🔒</span>
-                      : null;
-                    const actionText = meAction(m.content);
-                    if (actionText !== null) {
-                      return (
-                        <div key={m.id ?? `${m.timestamp}-${m.sender}`} className="message message-action">
-                          <span className="action-asterisk">*</span>
-                          <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
-                            {senderLabel}
-                          </span>
-                          <span className="action-text">
-                            <MessageContent content={actionText} knownNames={knownDisplayNames} myName={myDisplayName} />
-                          </span>
-                          <span className="message-time" title={formatFullTimestamp(m.timestamp)}>
-                            {formatRelative(m.timestamp)}
-                          </span>
-                          {lockIcon}
-                          {failedBadge}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={m.id ?? `${m.timestamp}-${m.sender}`} className="message">
-                        <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
-                          {senderLabel}
-                        </span>
-                        <span className="message-time" title={formatFullTimestamp(m.timestamp)}>
-                          {formatRelative(m.timestamp)}
-                        </span>
-                        {lockIcon}
-                        <span className="message-content">
-                          <MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} />
-                        </span>
-                        {m.attachments && m.attachments.length > 0 && (
-                          <MessageAttachments items={m.attachments} onImageClick={onOpenImage} />
-                        )}
-                        {failedBadge}
-                      </div>
-                    );
-                  })}
-                <div ref={messagesEndRef} />
-              </div>
-              <TypingIndicator typers={Object.values(dmTypingByKey)} />
-              {pendingAttachments.length > 0 && (
-                <PendingAttachments
-                  items={pendingAttachments}
-                  onRemove={(i) => onSetPendingAttachments(pendingAttachments.filter((_, idx) => idx !== i))}
-                />
-              )}
-              <div
-                className="input-area"
-                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-                onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) onAttachFiles(e.dataTransfer.files); }}
-              >
-                <label className="btn-attach" title={t("composer.attach")}>
-                  📎
-                  <input
-                    type="file"
-                    multiple
-                    style={{ display: "none" }}
-                    onChange={(e) => { onAttachFiles(e.target.files); (e.target as HTMLInputElement).value = ""; }}
-                  />
-                </label>
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => { onInputTextChange(e.target.value); if (e.target.value.length > 0) onPingDmTyping(); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSendDm(); }
-                  }}
-                  placeholder={t("composer.send")}
-                />
-                <button onClick={onSendDm}>{t("composer.send")}</button>
-              </div>
-            </>
+            <DmView
+              selectedConversation={selectedConversation}
+              dmMessages={dmMessages}
+              publicKey={publicKey}
+              blockedUsers={blockedUsers}
+              users={users}
+              knownDisplayNames={knownDisplayNames}
+              myDisplayName={myDisplayName}
+              pendingAttachments={pendingAttachments}
+              inputText={inputText}
+              dmTypingByKey={dmTypingByKey}
+              messagesEndRef={messagesEndRef}
+              onSetPendingAttachments={onSetPendingAttachments}
+              onAttachFiles={onAttachFiles}
+              onInputTextChange={onInputTextChange}
+              onPingDmTyping={onPingDmTyping}
+              onSendDm={onSendDm}
+              onOpenImage={onOpenImage}
+            />
           ) : (
             <div className="no-channel"><p>{t("dm.no_selection")}</p></div>
           )
+        ) : selectedChannel && selectedChannel.channel_type === "forum" ? (
+          <ForumView
+            selectedChannel={selectedChannel}
+            myRoles={myRoles}
+            myPubkey={publicKey}
+            isAdmin={isAdmin}
+          />
         ) : selectedChannel ? (
           <>
-            <div className="channel-header">
-              <div className="channel-header-info">
-                <h3># {selectedChannel.name}</h3>
-                {selectedChannel.description ? (
-                  <p
-                    className={`channel-description ${isAdmin ? "editable" : ""}`}
-                    onClick={() => { if (isAdmin) onOpenEditDescription(selectedChannel); }}
-                    title={isAdmin ? t("channel.description.click_edit") : undefined}
-                  >
-                    {selectedChannel.description}
-                  </p>
-                ) : isAdmin ? (
-                  <p
-                    className="channel-description editable muted"
-                    onClick={() => onOpenEditDescription(selectedChannel)}
-                    title={t("channel.description.click_add")}
-                  >
-                    {t("channel.add_description")}
-                  </p>
-                ) : null}
-              </div>
-              {!selectedChannel.is_category && (
-                voiceChannelId === selectedChannel.id ? (
-                  <button
-                    onClick={onVoiceLeave}
-                    className="btn-voice-header btn-voice-leave"
-                    title={t("voice.leave")}
-                  >
-                    🔴 {t("voice.leave.header")}
-                  </button>
-                ) : (
-                  <button
-                    onClick={onVoiceJoin}
-                    className="btn-voice-header btn-voice-join"
-                    title={t("voice.join")}
-                  >
-                    🎙 {t("voice.join.header")}
-                  </button>
-                )
-              )}
-              {installedGames.length > 0 && (
-                <button
-                  onClick={() => setPickerOpen(true)}
-                  className="btn-icon-header"
-                  title={t("content.activities")}
-                >
-                  <GamepadIcon size={16} />
-                </button>
-              )}
-              <button
-                onClick={() => setShowPinsModal(true)}
-                className="btn-icon-header"
-                title="Pinned messages"
-              >
-                📌
-              </button>
-              <button
-                onClick={() => searchOpen ? onCloseSearch() : onSetSearchOpen(true)}
-                className="btn-icon-header"
-                title={t("content.search.title")}
-              >
-                🔍
-              </button>
-              <button
-                onClick={() => onSetMemberSidebarHidden(!memberSidebarHidden)}
-                className="btn-icon-header"
-                title={memberSidebarHidden ? t("content.members.show") : t("content.members.hide")}
-              >
-                {memberSidebarHidden ? "👥" : "👤"}
-              </button>
-            </div>
-            {searchOpen && (
-              <div className="search-bar">
-                <input
-                  type="text"
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => onSetSearchQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Escape") onCloseSearch(); }}
-                  placeholder={t("channel.search.placeholder", { channel: selectedChannel.name })}
-                />
-                {searchResults !== null && (
-                  <span className="muted search-count">
-                    {t("channel.search.count", { count: searchResults.length })}
-                  </span>
-                )}
-                <button onClick={onCloseSearch} className="btn-small">{t("channel.search.close")}</button>
-              </div>
-            )}
-            {activeScreenShares.length > 0 && (
-              <ScreenShareViewer
-                ref={screenShareViewerRef}
-                streams={activeScreenShares}
-              />
-            )}
-            {sharing && (
-              <div className="screen-share-active-bar">
-                <span>{t("voice.sharing")}</span>
-                {(shareKbps ?? 0) > 0 && (
-                  <span className="muted">{shareKbps} kbps</span>
-                )}
-                <button className="stop-btn" onClick={onStopShare}>
-                  {t("voice.screen_share.stop")}
-                </button>
-              </div>
-            )}
-            <ol aria-label={t("message.actions.aria")} className="messages" ref={messagesContainerRef} onScroll={onMessagesScroll}>
-              {(searchResults ?? messages).length === 0 && (
-                <li className="channel-empty">
-                  {searchResults !== null ? (
-                    <p>{t("channel.empty.no_search")}</p>
-                  ) : (
-                    <>
-                      <div className="channel-empty-icon">👋</div>
-                      <h2>{t("channel.empty.welcome", { channel: selectedChannel.name })}</h2>
-                      <p>
-                        {selectedChannel.description
-                          ? selectedChannel.description
-                          : "This is the start of the channel — say hello!"}
-                      </p>
-                      <ul className="channel-empty-tips">
-                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_voice") }} />
-                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_drag") }} />
-                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_mentions") }} />
-                        <li dangerouslySetInnerHTML={{ __html: t("channel.empty.tip_jump") }} />
-                      </ul>
-                    </>
-                  )}
-                </li>
-              )}
-              {(searchResults ?? messages)
-                .filter((m) => !blockedUsers.has(m.sender))
-                .map((m, i, arr) => {
-                  const displayedMessages = arr;
-                  const showSeparator = i === 0 || dayKey(m.created_at) !== dayKey(arr[i - 1].created_at);
-                  const isMine = m.sender === publicKey;
-                  const canDelete =
-                    isMine ||
-                    myRoles.some((r) => r.permissions.some((p) => p === "admin" || p === "manage_messages"));
-                  const isEditing = editingMessageId === m.id;
-                  const senderUser = users.find((u) => u.public_key === m.sender);
-                  const senderLabel = senderUser?.display_name || m.sender_name || formatPubkey(m.sender);
-                  const isMentioned = m.sender !== publicKey && mentionsName(m.content, myDisplayName);
-                  const isEphemeral = !!m.visible_to_pubkey && m.visible_to_pubkey === publicKey;
-                  const actionText = meAction(m.content);
-
-                  const msgAriaLabelParts = [`${senderLabel} at ${formatRelative(m.created_at)}: ${m.content}`];
-                  if (m.reply_to) msgAriaLabelParts.push(`Reply to ${m.reply_to.sender_name || formatPubkey(m.reply_to.sender)}.`);
-                  if (m.reactions && m.reactions.length > 0) {
-                    const total = m.reactions.reduce((n, r) => n + r.count, 0);
-                    msgAriaLabelParts.push(`${total} ${total === 1 ? "reaction" : "reactions"}: ${m.reactions.map(r => r.emoji).join(", ")}.`);
-                  }
-                  if (m.attachments && m.attachments.length > 0) {
-                    msgAriaLabelParts.push(`${m.attachments.length} ${m.attachments.length === 1 ? "attachment" : "attachments"}: ${m.attachments.map(a => a.name).join(", ")}.`);
-                  }
-                  const msgAriaLabel = msgAriaLabelParts.join(" ");
-
-                  if (actionText !== null) {
-                    return (
-                      <React.Fragment key={m.id}>
-                        {showSeparator && (
-                          <li className="day-separator" aria-hidden="true">
-                            <span className="day-separator-label">{formatDayLabel(m.created_at)}</span>
-                          </li>
-                        )}
-                        <li
-                          ref={(el) => { messageRowRefs.current[i] = el; }}
-                          id={`msg-${m.id}`}
-                          tabIndex={focusedMessageIndex === i ? 0 : -1}
-                          onKeyDown={(e) => handleMessageKeyDown(e, i, displayedMessages)}
-                          aria-label={msgAriaLabel}
-                          className={`message message-action message-row ${isMentioned ? "message-mentioned" : ""}`}
-                        >
-                          <span className="action-asterisk" aria-hidden="true">*</span>
-                          <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
-                            {senderLabel}
-                          </span>
-                          <span className="action-text">
-                            <MessageContent content={actionText} knownNames={knownDisplayNames} myName={myDisplayName} />
-                          </span>
-                        </li>
-                      </React.Fragment>
-                    );
-                  }
-                  return (
-                    <React.Fragment key={m.id}>
-                      {showSeparator && (
-                        <li className="day-separator" aria-hidden="true">
-                          <span className="day-separator-label">{formatDayLabel(m.created_at)}</span>
-                        </li>
-                      )}
-                      <li
-                        ref={(el) => { messageRowRefs.current[i] = el; }}
-                        id={`msg-${m.id}`}
-                        tabIndex={focusedMessageIndex === i ? 0 : -1}
-                        onKeyDown={(e) => handleMessageKeyDown(e, i, displayedMessages)}
-                        aria-label={msgAriaLabel}
-                        className={`message message-row ${isMentioned ? "message-mentioned" : ""} ${isEphemeral ? "message-ephemeral" : ""}`}
-                      >
-                        {m.reply_to && (
-                          <div
-                            className="message-reply-preview"
-                            onClick={() => m.reply_to && onScrollToMessage(m.reply_to.message_id)}
-                            title={t("message.reply.jump")}
-                          >
-                            <span className="reply-arrow" aria-hidden="true">↪</span>
-                            <span className="reply-author">
-                              {m.reply_to.sender_name || formatPubkey(m.reply_to.sender)}
-                            </span>
-                            <span className="reply-snippet">{m.reply_to.content_preview}</span>
-                          </div>
-                        )}
-                        <span
-                          style={{ cursor: senderUser?.is_bot ? "pointer" : undefined }}
-                          onClick={senderUser?.is_bot && !senderUser?.is_webhook ? (e) => openBotCard(m.sender, e) : undefined}
-                        >
-                          <Avatar src={senderUser?.avatar} name={senderLabel} size={28} />
-                        </span>
-                        <span
-                          className="message-sender"
-                          style={{ color: colorForKey(m.sender), cursor: "pointer" }}
-                          onClick={senderUser?.is_bot && !senderUser?.is_webhook ? (e) => openBotCard(m.sender, e) : () => handleAuthorClick(m.sender)}
-                        >
-                          {senderLabel}
-                        </span>
-                        {senderUser?.is_bot && !senderUser?.is_webhook && (
-                          <span className="bot-badge" aria-hidden="true">{t("bot.badge")}</span>
-                        )}
-                        {senderUser?.is_webhook && (
-                          <span className="bot-badge bot-badge--app" aria-hidden="true">{t("app.badge")}</span>
-                        )}
-                        {isEditing ? (
-                          <span className="message-edit">
-                            <input
-                              type="text"
-                              value={editingDraft}
-                              onChange={(e) => onSetEditingDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") onSaveEdit();
-                                if (e.key === "Escape") onCancelEdit();
-                              }}
-                              autoFocus
-                            />
-                            <button onClick={onSaveEdit} className="btn-small">{t("message.edit.save")}</button>
-                            <button onClick={onCancelEdit} className="btn-small btn-secondary-small">{t("message.edit.cancel")}</button>
-                          </span>
-                        ) : (
-                          <>
-                            <span className="message-time" title={formatFullTimestamp(m.created_at)}>
-                              {formatRelative(m.created_at)}
-                            </span>
-                            <span className="message-content">
-                              <MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} />
-                            </span>
-                            {sessionInfo && (
-                              <LinkPreviewInMessage
-                                text={m.content}
-                                hubUrl={sessionInfo.hubUrl}
-                                token={sessionInfo.token}
-                              />
-                            )}
-                            {m.attachments && m.attachments.length > 0 && (
-                              <MessageAttachments items={m.attachments} onImageClick={onOpenImage} />
-                            )}
-                            {m.edited_at && (
-                              <span
-                                className="message-edited-tag"
-                                title={`Edited ${formatFullTimestamp(m.edited_at)}`}
-                              >
-                                {t("message.edited")}
-                              </span>
-                            )}
-                            <div role="toolbar" aria-label={t("message.actions.aria")} className="message-actions">
-                              <ReactionPicker onPick={(emoji) => onToggleReaction(m.id, emoji)} />
-                              <button className="message-action" onClick={() => onSetReplyTarget(m)} title={t("message.action.reply")} aria-label={t("message.action.reply")}>
-                                ↩
-                              </button>
-                              <button
-                                className="message-action"
-                                onClick={async () => {
-                                  const hub = hubs.find((h) => h.hub_id === activeHubId);
-                                  if (!hub) return;
-                                  const link = `voxply://${hub.hub_url.replace(/^https?:\/\//, "")}/channel/${m.channel_id}/message/${m.id}`;
-                                  try {
-                                    await navigator.clipboard.writeText(link);
-                                    onToast(t("message.action.link_copied"));
-                                  } catch (e) {
-                                    onError(String(e));
-                                  }
-                                }}
-                                title={t("message.action.copy_link")}
-                                aria-label={t("message.action.copy_link")}
-                              >
-                                🔗
-                              </button>
-                              {isAdmin && (
-                                <button
-                                  className="message-action"
-                                  onClick={() => handlePinToggle(m.id)}
-                                  title={pinnedMessageIds.has(m.id) ? "Unpin message" : "Pin message"}
-                                  aria-label={pinnedMessageIds.has(m.id) ? "Unpin message" : "Pin message"}
-                                >
-                                  📌
-                                </button>
-                              )}
-                              {isMine && (
-                                <button className="message-action" onClick={() => onStartEdit(m)} title={t("message.action.edit")} aria-label={t("message.action.edit")}>
-                                  ✎
-                                </button>
-                              )}
-                              {canDelete && (
-                                <button
-                                  className="message-action danger"
-                                  onClick={() => onDeleteMessage(m.id)}
-                                  title={t("message.action.delete")}
-                                  aria-label={t("message.action.delete")}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                            {m.reactions && m.reactions.length > 0 && (
-                              <MessageReactions
-                                reactions={m.reactions}
-                                onToggle={(emoji) => onToggleReaction(m.id, emoji)}
-                              />
-                            )}
-                            {m.embeds && m.embeds.length > 0 && (
-                              <MessageEmbeds embeds={m.embeds} />
-                            )}
-                            {m.components && m.components.length > 0 && (
-                              <MessageComponents
-                                rows={m.components}
-                                messageId={m.id}
-                                hubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
-                                onInteract={handleComponentInteract}
-                              />
-                            )}
-                            {isEphemeral && (
-                              <div className="message-ephemeral-label">{t("message.ephemeral")}</div>
-                            )}
-                            {(m.reply_count ?? 0) > 0 && (
-                              <div>
-                                <button
-                                  className="thread-chip"
-                                  onClick={() => toggleThread(m.id)}
-                                  aria-expanded={expandedThreads.has(m.id)}
-                                >
-                                  {expandedThreads.has(m.id) ? "▾" : "▸"} {m.reply_count} {m.reply_count === 1 ? "reply" : "replies"}
-                                </button>
-                              </div>
-                            )}
-                            {expandedThreads.has(m.id) && (
-                              <div className="thread-replies">
-                                {(threadReplies[m.id] ?? []).map((reply) => {
-                                  const rSenderUser = users.find((u) => u.public_key === reply.sender);
-                                  const rLabel = rSenderUser?.display_name || reply.sender_name || formatPubkey(reply.sender);
-                                  return (
-                                    <div key={reply.id} className="message" style={{ paddingTop: 2, paddingBottom: 2 }}>
-                                      <span className="message-sender" style={{ color: colorForKey(reply.sender) }}>
-                                        {rLabel}
-                                      </span>
-                                      <span className="message-time" title={formatFullTimestamp(reply.created_at)}>
-                                        {formatRelative(reply.created_at)}
-                                      </span>
-                                      <span className="message-content">
-                                        {reply.content}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </li>
-                    </React.Fragment>
-                  );
-                })}
-              <li ref={messagesEndChannelRef} aria-hidden="true" />
-            </ol>
-            {firstNotifyingMessageId &&
-              messages.some((m) => m.id === firstNotifyingMessageId) && (
-              <button
-                className="jump-to-bottom jump-to-notification"
-                onClick={() => {
-                  onScrollToMessage(firstNotifyingMessageId);
-                  onClearFirstNotify();
-                }}
-              >
-                {t("message.jump.first_notification")}
-              </button>
-            )}
-            {!stickToBottom && newWhileScrolledUp > 0 && (
-              <button className="jump-to-bottom" onClick={onJumpToBottom}>
-                {t("message.jump.bottom", { count: newWhileScrolledUp })}
-              </button>
-            )}
-            <TypingIndicator typers={Object.values(typingByKey)} />
-            {replyTarget && (
-              <div className="reply-banner">
-                <span className="muted">{t("composer.reply_banner.replying_to")} </span>
-                <strong>
-                  {users.find((u) => u.public_key === replyTarget.sender)?.display_name ||
-                    replyTarget.sender_name ||
-                    formatPubkey(replyTarget.sender)}
-                </strong>
-                <span className="reply-snippet">{replyTarget.content.slice(0, 80)}</span>
-                <button className="reply-banner-close" onClick={() => onSetReplyTarget(null)} title={t("composer.reply_banner.cancel")}>
-                  ×
-                </button>
-              </div>
-            )}
-            {pendingAttachments.length > 0 && (
-              <PendingAttachments
-                items={pendingAttachments}
-                onRemove={(i) => onSetPendingAttachments(pendingAttachments.filter((_, idx) => idx !== i))}
-              />
-            )}
-            <form
-              aria-label={t("composer.form.aria")}
-              className="input-area"
-              onSubmit={(e) => { e.preventDefault(); onSend(); }}
-              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-              onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) onAttachFiles(e.dataTransfer.files); }}
-            >
-              <label className="btn-attach" title={t("composer.attach")}>
-                📎
-                <input
-                  type="file"
-                  multiple
-                  style={{ display: "none" }}
-                  onChange={(e) => { onAttachFiles(e.target.files); (e.target as HTMLInputElement).value = ""; }}
-                />
-              </label>
-              <EmojiPicker
-                hubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url}
-                onPick={(emoji) => {
-                  onInputTextChange(inputText + emoji);
-                  messageInputRef.current?.focus();
-                }}
-              />
-              <div style={{ position: "relative", flex: 1 }}>
-                {mentionSuggestions.length > 0 && mentionQuery !== null && (
-                  <div className="mention-popup">
-                    {mentionSuggestions.map((u, i) => (
-                      <div
-                        key={u.public_key}
-                        className={`mention-popup-item${i === mentionSelectedIdx ? " selected" : ""}`}
-                        onMouseDown={(e) => { e.preventDefault(); if (u.display_name) fillMention(u.display_name); }}
-                      >
-                        <span className="mention-popup-name">{u.display_name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {slashSuggestions.length > 0 && (
-                  <div className="slash-command-popup">
-                    {slashSuggestions.map((s, i) => (
-                      <div
-                        key={s.command}
-                        className={`slash-command-item${i === slashSelectedIdx ? " selected" : ""}`}
-                        onMouseDown={(e) => { e.preventDefault(); fillSlashCommand(s.command); }}
-                      >
-                        <span className="slash-command-name">/{s.command}</span>
-                        <span className="slash-command-desc">{s.description}</span>
-                        <span className="slash-command-bot">{s.bot_name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <input
-                  ref={messageInputRef}
-                  type="text"
-                  value={inputText}
-                  style={{ width: "100%" }}
-                  onChange={(e) => { handleSlashInputChange(e.target.value); if (e.target.value.length > 0) onPingTyping(); }}
-                  onKeyDown={handleSlashKeyDown}
-                  placeholder={
-                    replyTarget
-                      ? t("composer.placeholder.reply", { name: users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user" })
-                      : t("composer.placeholder", { channel: selectedChannel.name })
-                  }
-                />
-              </div>
-              <button type="submit" aria-label={t("composer.send.aria")}>{t("composer.send")}</button>
-            </form>
+            <ChannelHeader
+              selectedChannel={selectedChannel}
+              voiceChannelId={voiceChannelId}
+              hasInstalledGames={installedGames.length > 0}
+              memberSidebarHidden={memberSidebarHidden}
+              searchOpen={searchOpen}
+              searchQuery={searchQuery}
+              searchResults={searchResults}
+              activeScreenShares={activeScreenShares}
+              screenShareViewerRef={screenShareViewerRef}
+              sharing={sharing}
+              shareKbps={shareKbps}
+              isAdmin={isAdmin}
+              onVoiceJoin={onVoiceJoin}
+              onVoiceLeave={onVoiceLeave}
+              onOpenGamePicker={() => setPickerOpen(true)}
+              onShowPinned={() => setShowPinsModal(true)}
+              onToggleSearch={() => searchOpen ? onCloseSearch() : onSetSearchOpen(true)}
+              onCloseSearch={onCloseSearch}
+              onSetSearchQuery={onSetSearchQuery}
+              onToggleMemberSidebar={() => onSetMemberSidebarHidden(!memberSidebarHidden)}
+              onOpenEditDescription={onOpenEditDescription}
+              onStopShare={onStopShare}
+            />
+            <ChannelMessageList
+              selectedChannelName={selectedChannel.name}
+              selectedChannelDescription={selectedChannel.description}
+              messages={messages}
+              searchResults={searchResults}
+              blockedUsers={blockedUsers}
+              publicKey={publicKey}
+              myDisplayName={myDisplayName}
+              myRoles={myRoles}
+              users={users}
+              knownDisplayNames={knownDisplayNames}
+              editingMessageId={editingMessageId}
+              editingDraft={editingDraft}
+              focusedMessageIndex={focusedMessageIndex}
+              expandedThreads={expandedThreads}
+              threadReplies={threadReplies}
+              hubs={hubs}
+              activeHubId={activeHubId}
+              isAdmin={isAdmin}
+              pinnedMessageIds={pinnedMessageIds}
+              sessionHubUrl={sessionInfo?.hubUrl ?? null}
+              sessionToken={sessionInfo?.token ?? null}
+              stickToBottom={stickToBottom}
+              newWhileScrolledUp={newWhileScrolledUp}
+              firstNotifyingMessageId={firstNotifyingMessageId}
+              typingByKey={typingByKey}
+              messagesContainerRef={messagesContainerRef}
+              messagesEndChannelRef={messagesEndChannelRef}
+              messageRowRefs={messageRowRefs}
+              onToggleReaction={onToggleReaction}
+              onSetReplyTarget={onSetReplyTarget}
+              onSaveEdit={onSaveEdit}
+              onCancelEdit={onCancelEdit}
+              onStartEdit={onStartEdit}
+              onDeleteMessage={onDeleteMessage}
+              onSetEditingDraft={onSetEditingDraft}
+              onScrollToMessage={onScrollToMessage}
+              onToast={onToast}
+              onError={onError}
+              onToggleThread={toggleThread}
+              onOpenImage={onOpenImage}
+              onOpenBotCard={openBotCard}
+              onAuthorClick={handleAuthorClick}
+              onPinToggle={onPinToggle}
+              onMessagesScroll={onMessagesScroll}
+              onJumpToBottom={onJumpToBottom}
+              onClearFirstNotify={onClearFirstNotify}
+              onMessageKeyDown={handleMessageKeyDown}
+              onComponentInteract={handleComponentInteract}
+            />
+            <ChannelComposer
+              channelName={selectedChannel.name}
+              activeHubUrl={activeHub?.hub_url}
+              inputText={inputText}
+              replyTarget={replyTarget}
+              pendingAttachments={pendingAttachments}
+              users={users}
+              publicKey={publicKey}
+              slashSuggestions={slashSuggestions}
+              slashSelectedIdx={slashSelectedIdx}
+              mentionSuggestions={mentionSuggestions}
+              mentionSelectedIdx={mentionSelectedIdx}
+              mentionQuery={mentionQuery}
+              messageInputRef={messageInputRef}
+              onInputTextChange={handleSlashInputChange}
+              onKeyDown={handleSlashKeyDown}
+              onSend={onSend}
+              onPingTyping={onPingTyping}
+              onAttachFiles={onAttachFiles}
+              onSetPendingAttachments={onSetPendingAttachments}
+              onSetReplyTarget={onSetReplyTarget}
+              onFillMention={fillMention}
+              onFillSlashCommand={fillSlashCommand}
+            />
           </>
         ) : selectedAllianceChannel ? (
-          <>
-            <div className="channel-header">
-              <div className="channel-header-info">
-                <h3># {selectedAllianceChannel.channel.channel_name}</h3>
-                <p className="channel-description">
-                  🤝 {selectedAllianceChannel.alliance_name} · hosted on{" "}
-                  {selectedAllianceChannel.channel.hub_name}
-                </p>
-              </div>
-            </div>
-            <div className="messages">
-              {allianceMessages.map((m) => {
-                const senderLabel = m.sender_name || formatPubkey(m.sender);
-                return (
-                  <div key={m.id} className="message">
-                    <Avatar src={null} name={senderLabel} size={28} />
-                    <span className="message-sender" style={{ color: colorForKey(m.sender) }}>
-                      {senderLabel}
-                    </span>
-                    <span className="message-content">
-                      <MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} />
-                    </span>
-                    {m.attachments && m.attachments.length > 0 && (
-                      <MessageAttachments items={m.attachments} onImageClick={onOpenImage} />
-                    )}
-                    <span className="message-time" title={formatFullTimestamp(m.created_at)}>
-                      {formatRelative(m.created_at)}
-                    </span>
-                  </div>
-                );
-              })}
-              {allianceMessages.length === 0 && (
-                <p className="muted" style={{ padding: "1rem" }}>
-                  No messages yet in this alliance channel.
-                </p>
-              )}
-            </div>
-            <div className="input-area">
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => onInputTextChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSendAllianceMessage(); }
-                }}
-                placeholder={`Message ${selectedAllianceChannel.channel.hub_name} · #${selectedAllianceChannel.channel.channel_name}`}
-              />
-              <button onClick={onSendAllianceMessage}>{t("composer.send")}</button>
-            </div>
-          </>
+          <AllianceView
+            selectedAllianceChannel={selectedAllianceChannel}
+            allianceMessages={allianceMessages}
+            inputText={inputText}
+            knownDisplayNames={knownDisplayNames}
+            myDisplayName={myDisplayName}
+            onInputTextChange={onInputTextChange}
+            onSendAllianceMessage={onSendAllianceMessage}
+            onOpenImage={onOpenImage}
+          />
         ) : (
           <div className="no-channel"><p>{t("channel.no_selection")}</p></div>
         )}
