@@ -10,7 +10,8 @@ export async function getMessages(
   const params = new URLSearchParams({ limit: String(limit) });
   if (before) params.set("before", before);
   const res = await hubFetch(`/channels/${channel_id}/messages?${params}`);
-  return res.json() as Promise<Message[]>;
+  const msgs = await res.json() as Message[];
+  return [...msgs].reverse();
 }
 
 export async function sendMessage(
