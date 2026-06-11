@@ -41,10 +41,10 @@ export function useHubAdmin({ activeHubId }: UseHubAdminParams) {
     } catch { /* prefill skipped */ }
     try {
       const [members, bans, invites, pending] = await Promise.allSettled([
-        hubFetch("/admin/members").then((r) => r.json() as Promise<MemberAdminInfo[]>),
-        hubFetch("/admin/bans").then((r) => r.json() as Promise<BanInfo[]>),
+        hubFetch("/hub/members").then((r) => r.json() as Promise<MemberAdminInfo[]>),
+        hubFetch("/moderation/bans").then((r) => r.json() as Promise<BanInfo[]>),
         hubFetch("/invites").then((r) => r.json() as Promise<InviteInfo[]>),
-        hubFetch("/admin/pending").then((r) => r.json() as Promise<PendingUser[]>),
+        hubFetch("/hub/pending").then((r) => r.json() as Promise<PendingUser[]>),
       ]);
       if (members.status === "fulfilled") setHubAdminMembers(members.value);
       if (bans.status === "fulfilled") setHubAdminBans(bans.value);

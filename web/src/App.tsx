@@ -1279,13 +1279,13 @@ export default function App() {
             onMaxChannelDepthChange={setMaxChannelDepth}
             onSave={saveHubAdminSettings}
             pendingMembers={hubAdminPending}
-            onApproveMember={(pk) => hubFetch(`/admin/members/${pk}/approve`, { method: "POST", body: "{}" }).catch(() => {})}
+            onApproveMember={(pk) => hubFetch(`/hub/pending/${pk}/approve`, { method: "POST" }).catch(() => {})}
             roles={meInfo?.roles ?? []}
             members={hubAdminMembers}
-            onKickMember={(pk) => hubFetch(`/admin/members/${pk}`, { method: "DELETE" }).catch(() => {})}
-            onBanMember={(pk) => hubFetch(`/admin/bans`, { method: "POST", body: JSON.stringify({ target_public_key: pk }) }).catch(() => {})}
+            onKickMember={(pk) => hubFetch(`/moderation/kick`, { method: "POST", body: JSON.stringify({ target_public_key: pk }) }).catch(() => {})}
+            onBanMember={(pk) => hubFetch(`/moderation/bans`, { method: "POST", body: JSON.stringify({ target_public_key: pk }) }).catch(() => {})}
             bans={hubAdminBans}
-            onUnban={(pk) => hubFetch(`/admin/bans/${pk}`, { method: "DELETE" }).catch(() => {})}
+            onUnban={(pk) => hubFetch(`/moderation/bans/${pk}`, { method: "DELETE" }).catch(() => {})}
             invites={hubAdminInvites}
             activeHubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
             myPubkey={publicKey ?? ""}

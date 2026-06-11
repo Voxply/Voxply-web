@@ -220,14 +220,14 @@ export async function updateDmBlocks(blockedPubkeys: string[]): Promise<void> {
 // ---- Channel reorder / reparent ----
 
 export async function moveChannel(channelId: string, parentId: string | null): Promise<void> {
-  await hubFetch(`/admin/channels/${channelId}/move`, {
-    method: "POST",
+  await hubFetch(`/channels/${channelId}`, {
+    method: "PATCH",
     body: JSON.stringify({ parent_id: parentId }),
   });
 }
 
 export async function reorderChannels(channelIds: string[]): Promise<void> {
-  await hubFetch("/admin/channels/reorder", {
+  await hubFetch("/channels/reorder", {
     method: "POST",
     body: JSON.stringify({ channel_ids: channelIds }),
   });
@@ -243,7 +243,7 @@ export async function saveHubSettings(settings: {
   min_security_level?: number;
   max_channel_depth?: number;
 }): Promise<void> {
-  await hubFetch("/admin/settings", {
+  await hubFetch("/hub", {
     method: "PATCH",
     body: JSON.stringify(settings),
   });
@@ -257,13 +257,25 @@ export async function getHubSettings(): Promise<{
   min_security_level: number;
   max_channel_depth: number;
 }> {
-  const r = await hubFetch("/admin/settings");
-  return r.json() as Promise<{
-    hub_name: string;
-    hub_description: string;
-    hub_icon: string;
-    require_approval: boolean;
-    min_security_level: number;
-    max_channel_depth: number;
-  }>;
+  const [settingsRes, infoRes] = await Promise.all([
+    hubFetch("/hub/settings").then((r) => r.json() as Promise<{
+      require_approval: boolean;
+      invite_only: boolean;
+      min_security_level: number;
+      max_channel_depth: number;
+    }>),
+    hubFetch("/info").then((r) => r.json() as Promise<{
+      name: string;
+      description?: string | null;
+      icon?: string | null;
+    }>),
+  ]);
+  return {
+    hub_name: infoRes.name,
+    hub_description: infoRes.description ?? "",
+    hub_icon: infoRes.icon ?? "",
+    require_approval: settingsRes.require_approval,
+    min_security_level: settingsRes.min_security_level,
+    max_channel_depth: settingsRes.max_channel_depth,
+  };
 }
