@@ -18,6 +18,8 @@ the browser; live voice needs the
 [desktop app](https://github.com/Voxply/Voxply-desktop) (browsers can't
 speak the hub's UDP voice protocol).
 
+![Creating an identity and joining a hub from the browser - no signup, no install](https://raw.githubusercontent.com/Voxply/Voxply/main/assets/join-flow.gif)
+
 ## Features
 
 - **Zero install, zero account** — open the page, an Ed25519 identity
