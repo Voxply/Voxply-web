@@ -74,7 +74,7 @@ export async function searchMessages(
   limit = 20,
 ): Promise<Message[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  const res = await hubFetch(`/channels/${channel_id}/messages/search?${params}`);
+  const res = await hubFetch(`/channels/${channel_id}/messages?${params}`);
   return res.json() as Promise<Message[]>;
 }
 

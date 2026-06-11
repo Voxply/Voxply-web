@@ -8,16 +8,19 @@ export interface WsHandlers {
   onPin?: (e: object) => void;
   onPoll?: (e: object) => void;
   onError?: (e: object) => void;
+  onReauthNeeded?: (hubId: string) => void;
 }
 
 const BACKOFF_INITIAL = 1000;
 const BACKOFF_CAP = 30_000;
+const REAUTH_AFTER_FAILURES = 3;
 
 export class HubWebSocket {
   private ws: WebSocket | null = null;
   private closed = false;
   private backoff = BACKOFF_INITIAL;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private consecutiveFailures = 0;
 
   constructor(
     private hub_url: string,
@@ -41,6 +44,7 @@ export class HubWebSocket {
 
     this.ws.onopen = () => {
       this.backoff = BACKOFF_INITIAL;
+      this.consecutiveFailures = 0;
       this.handlers.onStatusChange?.(true, this.hub_id);
     };
 
@@ -92,6 +96,11 @@ export class HubWebSocket {
 
   private scheduleReconnect(): void {
     if (this.closed) return;
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures >= REAUTH_AFTER_FAILURES && this.handlers.onReauthNeeded) {
+      this.handlers.onReauthNeeded(this.hub_id);
+      return;
+    }
     this.retryTimer = setTimeout(() => {
       this.connect();
     }, this.backoff);

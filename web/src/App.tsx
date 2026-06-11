@@ -50,6 +50,7 @@ import {
   listHubs,
   previewHubInfo,
   reorderHubs,
+  reauthorizeHub,
   hubFetch,
   HubApiError,
 } from "@platform";
@@ -62,9 +63,9 @@ import {
   deleteMessage,
   addReaction,
   removeReaction,
+  searchMessages,
   getUnreadCounts,
   markChannelRead,
-
 } from "@platform";
 import {
   getDmMessages,
@@ -419,6 +420,8 @@ export default function App() {
     hubErrorTimerRef.current = setTimeout(() => setHubErrorToast(null), 5000);
   }
 
+  const stableHandlersRef = useRef<WsHandlers>({});
+
   const stableHandlers: WsHandlers = useMemo(() => ({
     onMessage: (raw) => {
       const m = raw as Record<string, unknown>;
@@ -525,8 +528,15 @@ export default function App() {
       const message = (m.message as string | undefined) ?? "An error occurred on the hub.";
       showHubError(message);
     },
+    onReauthNeeded: (hubId) => {
+      reauthorizeHub(hubId, stableHandlersRef.current).then(() => {
+        if (hubId === activeHubIdRef.current) void loadHubData();
+      }).catch(() => {});
+    },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
+
+  stableHandlersRef.current = stableHandlers;
 
   // === Hub restore on startup ===
 
@@ -857,6 +867,31 @@ export default function App() {
     () => buildChannelTree(channels),
     [channels],
   );
+
+  useEffect(() => {
+    if (!selectedChannel) {
+      setSearchResults(null);
+      return;
+    }
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults(null);
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      try {
+        const r = await searchMessages(selectedChannel.id, q);
+        if (!cancelled) setSearchResults(r);
+      } catch {
+        if (!cancelled) setSearchResults([]);
+      }
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [searchQuery, selectedChannel]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
