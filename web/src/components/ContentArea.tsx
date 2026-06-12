@@ -13,6 +13,7 @@ import type {
   VoiceParticipant,
   ActiveStream,
   InstalledGame,
+  Poll,
 } from "../types";
 import { GamePicker } from "./GamePicker";
 import { GameModal } from "./GameModal";
@@ -31,6 +32,7 @@ import { ChannelHeader } from "./content/ChannelHeader";
 import { ChannelMessageList } from "./content/ChannelMessageList";
 import { ChannelComposer } from "./content/ChannelComposer";
 import { AllianceView } from "./content/AllianceView";
+import { PollComposer } from "./PollComposer";
 
 interface SelectedAllianceChannel {
   alliance_id: string;
@@ -188,6 +190,8 @@ export function ContentArea({
   const pendingAnnouncementsRef = useRef<string[]>([]);
   const [showPinsModal, setShowPinsModal] = useState(false);
   const [profileCardPubkey, setProfileCardPubkey] = useState<string | null>(null);
+  const [showPollComposer, setShowPollComposer] = useState(false);
+  const [channelPolls, setChannelPolls] = useState<Poll[]>([]);
 
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(() => {
     if (!selectedChannel) return new Set();
@@ -206,6 +210,10 @@ export function ContentArea({
     } catch { setExpandedThreads(new Set()); }
     setThreadReplies({});
   }, [selectedChannel?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setChannelPolls([]);
+  }, [selectedChannel?.id]);
 
   function persistExpandedThreads(next: Set<string>) {
     if (!selectedChannel) return;
@@ -487,6 +495,9 @@ export function ContentArea({
               messagesContainerRef={messagesContainerRef}
               messagesEndChannelRef={messagesEndChannelRef}
               messageRowRefs={messageRowRefs}
+              channelPolls={channelPolls}
+              onPollUpdate={(poll) => setChannelPolls((prev) => prev.map((p) => p.id === poll.id ? poll : p))}
+              onPollDelete={(pollId) => setChannelPolls((prev) => prev.filter((p) => p.id !== pollId))}
               onToggleReaction={onToggleReaction}
               onSetReplyTarget={onSetReplyTarget}
               onSaveEdit={onSaveEdit}
@@ -531,6 +542,7 @@ export function ContentArea({
               onSetReplyTarget={onSetReplyTarget}
               onFillMention={fillMention}
               onFillSlashCommand={fillSlashCommand}
+              onShowPollComposer={() => setShowPollComposer(true)}
             />
           </>
         ) : selectedAllianceChannel ? (
@@ -603,6 +615,17 @@ export function ContentArea({
         <UserProfileCard
           pubkey={profileCardPubkey}
           onClose={() => setProfileCardPubkey(null)}
+        />
+      )}
+
+      {showPollComposer && selectedChannel && (
+        <PollComposer
+          channelId={selectedChannel.id}
+          onCreated={(poll) => {
+            setChannelPolls((prev) => [...prev, poll]);
+            setShowPollComposer(false);
+          }}
+          onClose={() => setShowPollComposer(false)}
         />
       )}
     </>

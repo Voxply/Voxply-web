@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Message, Attachment, User, Hub } from "../../types";
+import type { Message, Attachment, User } from "../../types";
 import { formatPubkey } from "@voxply/utils";
 import { EmojiPicker } from "../EmojiPicker";
 import { PendingAttachments } from "../Attachments";
@@ -34,6 +34,7 @@ interface Props {
   onSetReplyTarget: (msg: Message | null) => void;
   onFillMention: (displayName: string) => void;
   onFillSlashCommand: (command: string) => void;
+  onShowPollComposer: () => void;
 }
 
 export function ChannelComposer({
@@ -59,8 +60,34 @@ export function ChannelComposer({
   onSetReplyTarget,
   onFillMention,
   onFillSlashCommand,
+  onShowPollComposer,
 }: Props) {
   const { t } = useTranslation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canSend = inputText.trim().length > 0 || pendingAttachments.length > 0;
+
+  function closeMore() {
+    setMoreOpen(false);
+    messageInputRef.current?.focus();
+  }
+
+  function handleAttachClick() {
+    closeMore();
+    fileInputRef.current?.click();
+  }
+
+  function handleCreatePoll() {
+    closeMore();
+    onShowPollComposer();
+  }
+
+  function handleShellKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape" && moreOpen) {
+      e.stopPropagation();
+      closeMore();
+    }
+  }
 
   return (
     <>
@@ -90,67 +117,127 @@ export function ChannelComposer({
         onSubmit={(e) => { e.preventDefault(); onSend(); }}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
         onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) onAttachFiles(e.dataTransfer.files); }}
+        onKeyDown={handleShellKeyDown}
       >
-        <label className="btn-attach" title={t("composer.attach")}>
-          📎
-          <input
-            type="file"
-            multiple
-            style={{ display: "none" }}
-            onChange={(e) => { onAttachFiles(e.target.files); (e.target as HTMLInputElement).value = ""; }}
-          />
-        </label>
-        <EmojiPicker
-          hubUrl={activeHubUrl}
-          onPick={(emoji) => {
-            onInputTextChange(inputText + emoji);
-            messageInputRef.current?.focus();
-          }}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => { onAttachFiles(e.target.files); (e.target as HTMLInputElement).value = ""; }}
         />
-        <div style={{ position: "relative", flex: 1 }}>
-          {mentionSuggestions.length > 0 && mentionQuery !== null && (
-            <div className="mention-popup">
-              {mentionSuggestions.map((u, i) => (
-                <div
-                  key={u.public_key}
-                  className={`mention-popup-item${i === mentionSelectedIdx ? " selected" : ""}`}
-                  onMouseDown={(e) => { e.preventDefault(); if (u.display_name) onFillMention(u.display_name); }}
-                >
-                  <span className="mention-popup-name">{u.display_name}</span>
-                </div>
-              ))}
+        <div className="composer-shell">
+          <div style={{ position: "relative", flex: 1 }}>
+            {mentionSuggestions.length > 0 && mentionQuery !== null && (
+              <div className="mention-popup">
+                {mentionSuggestions.map((u, i) => (
+                  <div
+                    key={u.public_key}
+                    className={`mention-popup-item${i === mentionSelectedIdx ? " selected" : ""}`}
+                    onMouseDown={(e) => { e.preventDefault(); if (u.display_name) onFillMention(u.display_name); }}
+                  >
+                    <span className="mention-popup-name">{u.display_name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {slashSuggestions.length > 0 && (
+              <div className="slash-command-popup">
+                {slashSuggestions.map((s, i) => (
+                  <div
+                    key={s.command}
+                    className={`slash-command-item${i === slashSelectedIdx ? " selected" : ""}`}
+                    onMouseDown={(e) => { e.preventDefault(); onFillSlashCommand(s.command); }}
+                  >
+                    <span className="slash-command-name">/{s.command}</span>
+                    <span className="slash-command-desc">{s.description}</span>
+                    <span className="slash-command-bot">{s.bot_name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={messageInputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => { onInputTextChange(e.target.value); if (e.target.value.length > 0) onPingTyping(); }}
+              onKeyDown={onKeyDown}
+              placeholder={
+                replyTarget
+                  ? t("composer.placeholder.reply", { name: users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user" })
+                  : t("composer.placeholder", { channel: channelName })
+              }
+            />
+          </div>
+          <div className="composer-actions">
+            <div className="composer-more">
+              <button
+                type="button"
+                className={`composer-btn${moreOpen ? " open" : ""}`}
+                title={t("composer.more_actions")}
+                aria-label={t("composer.more_actions")}
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((v) => !v)}
+              >
+                <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="10" y1="4" x2="10" y2="16" />
+                  <line x1="4" y1="10" x2="16" y2="10" />
+                </svg>
+              </button>
+              {moreOpen && (
+                <>
+                  <div
+                    style={{ position: "fixed", inset: 0, zIndex: 199 }}
+                    onClick={closeMore}
+                    aria-hidden="true"
+                  />
+                  <div className="composer-more-menu" role="menu">
+                    <button
+                      type="button"
+                      className="composer-more-item"
+                      role="menuitem"
+                      onClick={handleAttachClick}
+                    >
+                      <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M16 10l-5 5a4 4 0 0 1-5.66-5.66l6-6a2.5 2.5 0 0 1 3.54 3.54l-6.01 6a1 1 0 0 1-1.41-1.41L13 5.5" />
+                      </svg>
+                      {t("composer.attach")}
+                    </button>
+                    <button
+                      type="button"
+                      className="composer-more-item"
+                      role="menuitem"
+                      onClick={handleCreatePoll}
+                    >
+                      <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="2" y="13" width="4" height="5" rx="1" />
+                        <rect x="8" y="8" width="4" height="10" rx="1" />
+                        <rect x="14" y="3" width="4" height="15" rx="1" />
+                      </svg>
+                      {t("composer.create_poll")}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          )}
-          {slashSuggestions.length > 0 && (
-            <div className="slash-command-popup">
-              {slashSuggestions.map((s, i) => (
-                <div
-                  key={s.command}
-                  className={`slash-command-item${i === slashSelectedIdx ? " selected" : ""}`}
-                  onMouseDown={(e) => { e.preventDefault(); onFillSlashCommand(s.command); }}
-                >
-                  <span className="slash-command-name">/{s.command}</span>
-                  <span className="slash-command-desc">{s.description}</span>
-                  <span className="slash-command-bot">{s.bot_name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <input
-            ref={messageInputRef}
-            type="text"
-            value={inputText}
-            style={{ width: "100%" }}
-            onChange={(e) => { onInputTextChange(e.target.value); if (e.target.value.length > 0) onPingTyping(); }}
-            onKeyDown={onKeyDown}
-            placeholder={
-              replyTarget
-                ? t("composer.placeholder.reply", { name: users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user" })
-                : t("composer.placeholder", { channel: channelName })
-            }
-          />
+            <EmojiPicker
+              hubUrl={activeHubUrl}
+              buttonClassName="composer-btn"
+              onPick={(emoji) => {
+                onInputTextChange(inputText + emoji);
+                messageInputRef.current?.focus();
+              }}
+            />
+          </div>
         </div>
-        <button type="submit" aria-label={t("composer.send.aria")}>{t("composer.send")}</button>
+        <button
+          type="submit"
+          className="composer-send"
+          disabled={!canSend}
+          aria-label={t("composer.send.aria")}
+        >
+          {t("composer.send")}
+        </button>
       </form>
     </>
   );

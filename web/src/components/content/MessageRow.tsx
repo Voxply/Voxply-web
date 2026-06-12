@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import type { Message, User, RoleInfo, Hub } from "../../types";
+import type { Message, User, RoleInfo, Hub, Poll } from "../../types";
 import {
   formatPubkey,
   meAction,
@@ -19,6 +19,7 @@ import { ReactionPicker } from "../ReactionPicker";
 import { MessageEmbeds } from "../MessageEmbeds";
 import { MessageComponents } from "../MessageComponents";
 import { LinkPreviewInMessage } from "../LinkPreviewInMessage";
+import { PollCard } from "../PollCard";
 import { pinMessage, unpinMessage } from "@platform";
 
 interface Props {
@@ -60,6 +61,9 @@ interface Props {
   onPinToggle?: (messageId: string, isPinned: boolean) => void;
   onMessageKeyDown: (e: React.KeyboardEvent<HTMLLIElement>, index: number, displayedMessages: Message[]) => void;
   onComponentInteract: (messageId: string, customId: string, values: string[]) => void;
+  channelPolls: Poll[];
+  onPollUpdate: (poll: Poll) => void;
+  onPollDelete: (pollId: string) => void;
 }
 
 export function MessageRow({
@@ -101,6 +105,9 @@ export function MessageRow({
   onPinToggle,
   onMessageKeyDown,
   onComponentInteract,
+  channelPolls,
+  onPollUpdate,
+  onPollDelete,
 }: Props) {
   const { t } = useTranslation();
 
@@ -115,6 +122,12 @@ export function MessageRow({
   const isMentioned = m.sender !== publicKey && mentionsName(m.content, myDisplayName);
   const isEphemeral = !!m.visible_to_pubkey && m.visible_to_pubkey === publicKey;
   const actionText = meAction(m.content);
+
+  const POLL_PREFIX = "**Poll:** ";
+  const pollQuestion = m.content.startsWith(POLL_PREFIX) ? m.content.slice(POLL_PREFIX.length) : null;
+  const matchedPoll = pollQuestion !== null
+    ? channelPolls.find((p) => p.question === pollQuestion)
+    : null;
 
   const msgAriaLabelParts = [`${senderLabel} at ${formatRelative(m.created_at)}: ${m.content}`];
   if (m.reply_to) msgAriaLabelParts.push(`${t("message.action.reply")} ${m.reply_to.sender_name || formatPubkey(m.reply_to.sender)}.`);
@@ -223,6 +236,14 @@ export function MessageRow({
             <span className="message-content">
               <MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} />
             </span>
+            {matchedPoll && (
+              <PollCard
+                poll={matchedPoll}
+                isAdmin={isAdmin}
+                onUpdate={onPollUpdate}
+                onDelete={onPollDelete}
+              />
+            )}
             {sessionHubUrl && sessionToken && (
               <LinkPreviewInMessage
                 text={m.content}

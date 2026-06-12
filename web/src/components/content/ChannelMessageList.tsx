@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import type { Message, User, RoleInfo, Hub } from "../../types";
+import type { Message, User, RoleInfo, Hub, Poll } from "../../types";
 import { TypingIndicator } from "../TypingIndicator";
 import { MessageRow } from "./MessageRow";
 
@@ -55,6 +55,9 @@ interface Props {
   onClearFirstNotify: () => void;
   onMessageKeyDown: (e: React.KeyboardEvent<HTMLLIElement>, index: number, displayedMessages: Message[]) => void;
   onComponentInteract: (messageId: string, customId: string, values: string[]) => void;
+  channelPolls: Poll[];
+  onPollUpdate: (poll: Poll) => void;
+  onPollDelete: (pollId: string) => void;
 }
 
 export function ChannelMessageList({
@@ -106,6 +109,9 @@ export function ChannelMessageList({
   onClearFirstNotify,
   onMessageKeyDown,
   onComponentInteract,
+  channelPolls,
+  onPollUpdate,
+  onPollDelete,
 }: Props) {
   const { t } = useTranslation();
   const displayedMessages = (searchResults ?? messages).filter((msg) => !blockedUsers.has(msg.sender));
@@ -159,6 +165,7 @@ export function ChannelMessageList({
             sessionHubUrl={sessionHubUrl}
             sessionToken={sessionToken}
             displayedMessages={displayedMessages}
+            channelPolls={channelPolls}
             messageRowRef={(el) => { messageRowRefs.current[i] = el; }}
             onToggleReaction={onToggleReaction}
             onSetReplyTarget={onSetReplyTarget}
@@ -177,6 +184,8 @@ export function ChannelMessageList({
             onPinToggle={onPinToggle}
             onMessageKeyDown={onMessageKeyDown}
             onComponentInteract={onComponentInteract}
+            onPollUpdate={onPollUpdate}
+            onPollDelete={onPollDelete}
           />
         ))}
         <li ref={messagesEndChannelRef} aria-hidden="true" />

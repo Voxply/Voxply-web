@@ -16,9 +16,10 @@ interface HubEmoji {
 interface Props {
   onPick: (text: string) => void;
   hubUrl?: string;
+  buttonClassName?: string;
 }
 
-export function EmojiPicker({ onPick, hubUrl }: Props) {
+export function EmojiPicker({ onPick, hubUrl, buttonClassName }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [popupStyle, setPopupStyle] = useState<CSSProperties>({});
@@ -91,11 +92,19 @@ export function EmojiPicker({ onPick, hubUrl }: Props) {
     <div className="reaction-picker">
       <button
         ref={btnRef}
-        className="reaction-add-btn"
+        className={buttonClassName ?? "reaction-add-btn"}
         onClick={handleOpen}
-        title={t("reaction.add")}
+        title={t(buttonClassName ? "composer.emoji" : "reaction.add")}
+        aria-label={t(buttonClassName ? "composer.emoji" : "reaction.add")}
       >
-        🙂
+        {buttonClassName ? (
+          <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" />
+            <path d="M7 12s1 2 3 2 3-2 3-2" />
+            <circle cx="7.5" cy="8.5" r="0.75" fill="currentColor" stroke="none" />
+            <circle cx="12.5" cy="8.5" r="0.75" fill="currentColor" stroke="none" />
+          </svg>
+        ) : "🙂"}
       </button>
       {open && (
         <>
