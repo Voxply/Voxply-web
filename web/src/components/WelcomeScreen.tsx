@@ -18,6 +18,7 @@ interface WelcomeScreenProps {
   onJoin: () => void;
   onBrowse?: () => void;
   onDismiss: () => void;
+  homeHubHint?: string;
 }
 
 export function WelcomeScreen({
@@ -29,6 +30,7 @@ export function WelcomeScreen({
   onJoin,
   onBrowse,
   onDismiss,
+  homeHubHint,
 }: WelcomeScreenProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -55,6 +57,11 @@ export function WelcomeScreen({
           </button>
         </div>
 
+        {homeHubHint && (
+          <p className="muted" style={{ fontSize: "var(--text-sm)", marginBottom: 4 }}>
+            Served by this hub — {homeHubHint}
+          </p>
+        )}
         {hubPreview.state === "loading" && (
           <p className="muted hub-preview-status" style={{ fontSize: "var(--text-sm)" }}>Looking up hub…</p>
         )}
@@ -140,10 +147,11 @@ interface WelcomeScreenContainerProps {
   wsHandlers: WsHandlers;
   onHubAdded: (hub: Hub) => void;
   onDismiss: () => void;
+  initialHubUrl?: string;
 }
 
-export function WelcomeScreenContainer({ wsHandlers, onHubAdded, onDismiss }: WelcomeScreenContainerProps) {
-  const [hubUrl, setHubUrl] = useState("");
+export function WelcomeScreenContainer({ wsHandlers, onHubAdded, onDismiss, initialHubUrl }: WelcomeScreenContainerProps) {
+  const [hubUrl, setHubUrl] = useState(initialHubUrl ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hubPreview, setHubPreview] = useState<HubPreview>({ state: "idle" });
@@ -177,6 +185,7 @@ export function WelcomeScreenContainer({ wsHandlers, onHubAdded, onDismiss }: We
       error={error}
       onJoin={handleJoin}
       onDismiss={onDismiss}
+      homeHubHint={initialHubUrl}
     />
   );
 }

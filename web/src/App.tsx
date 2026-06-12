@@ -53,6 +53,7 @@ import {
   reauthorizeHub,
   hubFetch,
   HubApiError,
+  loadSavedHubs,
 } from "@platform";
 import type { WsHandlers } from "@platform";
 import { getActiveHubId } from "@platform";
@@ -209,6 +210,7 @@ export default function App() {
   const [addingHub, setAddingHub] = useState(false);
   const [addHubError, setAddHubError] = useState<string | null>(null);
   const [showAddHub, setShowAddHub] = useState(false);
+  const [homeHubUrl, setHomeHubUrl] = useState<string | undefined>(undefined);
 
   // === Hub data ===
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -550,6 +552,10 @@ export default function App() {
         setActiveHubIdState(id);
         await loadHubData();
         publishDhKey().catch(() => {});
+      }
+      const globalHomeHub = window.__VOXPLY_HOME_HUB__;
+      if (typeof globalHomeHub === "string" && globalHomeHub.trim() && loadSavedHubs().length === 0) {
+        setHomeHubUrl(globalHomeHub.trim());
       }
     }
     void restore();
@@ -1044,6 +1050,7 @@ export default function App() {
               setShowWelcome(false);
               try { localStorage.setItem("voxply.seenWelcome", "1"); } catch {}
             }}
+            initialHubUrl={homeHubUrl}
           />
         </div>
       )}
