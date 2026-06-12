@@ -5,9 +5,9 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist",
     "baseUrl": ".",
     "types": ["vite/client"],
     "paths": {
